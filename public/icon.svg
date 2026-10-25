@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <rect width="512" height="512" rx="128" fill="#E8A3C7"/>
+  <g fill="#FFFFFF">
+    <!-- 5 Petals of the signature Glow Up flower -->
+    <ellipse cx="256" cy="180" rx="66" ry="88" transform="rotate(0 256 256)"/>
+    <ellipse cx="256" cy="180" rx="66" ry="88" transform="rotate(72 256 256)"/>
+    <ellipse cx="256" cy="180" rx="66" ry="88" transform="rotate(144 256 256)"/>
+    <ellipse cx="256" cy="180" rx="66" ry="88" transform="rotate(216 256 256)"/>
+    <ellipse cx="256" cy="180" rx="66" ry="88" transform="rotate(288 256 256)"/>
+    <!-- Center circle to cleanly merge overlapping petals -->
+    <circle cx="256" cy="256" r="75"/>
+  </g>
+  <!-- Center 4-point sparkle star in magenta -->
+  <path d="M 256 195 Q 256 256 317 256 Q 256 256 256 317 Q 256 256 195 256 Q 256 256 256 195 Z" fill="#D9468F"/>
+</svg>

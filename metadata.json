@@ -1,0 +1,8 @@
+{
+  "name": "Glow Up Lab",
+  "description": "Application personnelle et esthétique de musculation, suivi des séances, routines et progression.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

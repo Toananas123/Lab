@@ -1,0 +1,144 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "User profile, preferences and settings",
+      "type": "object",
+      "properties": {
+        "displayName": { "type": "string", "maxLength": 100 },
+        "email": { "type": "string", "maxLength": 150 },
+        "spotifyUrl": { "type": "string", "maxLength": 300 },
+        "unitSystem": { "type": "string", "enum": ["metric", "imperial"] },
+        "defaultRestTime": { "type": "number" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["displayName", "unitSystem"]
+    },
+    "UserCustomExercise": {
+      "title": "UserCustomExercise",
+      "description": "Custom exercise added by user",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "userId": { "type": "string", "maxLength": 128 },
+        "name": { "type": "string", "maxLength": 120 },
+        "category": { "type": "string", "maxLength": 50 },
+        "primaryMuscle": { "type": "string", "maxLength": 50 },
+        "secondaryMuscles": { "type": "string", "maxLength": 150 },
+        "equipment": { "type": "string", "maxLength": 50 },
+        "description": { "type": "string", "maxLength": 1000 },
+        "tips": { "type": "string", "maxLength": 1000 },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["name", "category", "primaryMuscle", "equipment"]
+    },
+    "UserFavorite": {
+      "title": "UserFavorite",
+      "description": "Favorite exercises marked by user",
+      "type": "object",
+      "properties": {
+        "exerciseId": { "type": "string", "maxLength": 128 },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["exerciseId"]
+    },
+    "UserRoutine": {
+      "title": "UserRoutine",
+      "description": "Pre-configured or custom workout templates",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string", "maxLength": 120 },
+        "targetZone": { "type": "string", "maxLength": 50 },
+        "exercises": { "type": "string", "maxLength": 10000 },
+        "finisher": { "type": "string", "maxLength": 500 },
+        "notes": { "type": "string", "maxLength": 1000 },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["name", "exercises"]
+    },
+    "UserWorkout": {
+      "title": "UserWorkout",
+      "description": "Active or completed workout sessions with sets and charges",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string", "maxLength": 120 },
+        "date": { "type": "string", "maxLength": 50 },
+        "status": { "type": "string", "enum": ["draft", "planned", "in_progress", "completed", "cancelled"] },
+        "durationMinutes": { "type": "number" },
+        "exercises": { "type": "string", "maxLength": 20000 },
+        "finisher": { "type": "string", "maxLength": 1000 },
+        "notes": { "type": "string", "maxLength": 2000 },
+        "startedAt": { "type": "string", "format": "date-time" },
+        "completedAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["name", "status"]
+    },
+    "UserMeasurement": {
+      "title": "UserMeasurement",
+      "description": "Body measurements entry",
+      "type": "object",
+      "properties": {
+        "date": { "type": "string", "maxLength": 50 },
+        "weight": { "type": "number" },
+        "waist": { "type": "number" },
+        "hips": { "type": "number" },
+        "thighs": { "type": "number" },
+        "arms": { "type": "number" },
+        "chest": { "type": "number" },
+        "notes": { "type": "string", "maxLength": 500 },
+        "unit": { "type": "string", "enum": ["metric", "imperial"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["date"]
+    },
+    "UserWeeklyPlan": {
+      "title": "UserWeeklyPlan",
+      "description": "Weekly plan day scheduling",
+      "type": "object",
+      "properties": {
+        "dayOfWeek": { "type": "number" },
+        "date": { "type": "string", "maxLength": 50 },
+        "routineId": { "type": "string", "maxLength": 128 },
+        "workoutName": { "type": "string", "maxLength": 120 },
+        "targetZone": { "type": "string", "maxLength": 50 },
+        "status": { "type": "string", "enum": ["planned", "in_progress", "completed", "postponed", "cancelled", "rest"] },
+        "notes": { "type": "string", "maxLength": 500 },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["dayOfWeek", "status"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}/profile/main": {
+      "schema": "UserProfile",
+      "description": "User profile document"
+    },
+    "/users/{userId}/exercises/{exerciseId}": {
+      "schema": "UserCustomExercise",
+      "description": "User custom exercises"
+    },
+    "/users/{userId}/favorites/{favId}": {
+      "schema": "UserFavorite",
+      "description": "User favorites"
+    },
+    "/users/{userId}/routines/{routineId}": {
+      "schema": "UserRoutine",
+      "description": "User workout routine templates"
+    },
+    "/users/{userId}/workouts/{workoutId}": {
+      "schema": "UserWorkout",
+      "description": "User workout sessions and logs"
+    },
+    "/users/{userId}/measurements/{measurementId}": {
+      "schema": "UserMeasurement",
+      "description": "User physical body measurements"
+    },
+    "/users/{userId}/weekly_plans/{planId}": {
+      "schema": "UserWeeklyPlan",
+      "description": "Weekly planning schedule"
+    }
+  }
+}

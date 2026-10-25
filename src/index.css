@@ -1,0 +1,88 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "SF Pro", system-ui, sans-serif;
+  --font-display: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro", "SF Pro Text", system-ui, sans-serif;
+  --font-compact: "SF Compact", "SF Compact Text", "SF Compact Display", -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  --font-mono: "SF Mono", ui-monospace, Menlo, Monaco, Consolas, monospace;
+  --font-serif: "New York", ui-serif, Georgia, Cambria, "Times New Roman", serif;
+}
+
+@layer base {
+  :root {
+    --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "SF Pro", system-ui, sans-serif;
+    --font-display: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro", "SF Pro Text", system-ui, sans-serif;
+    --font-compact: "SF Compact", "SF Compact Text", "SF Compact Display", -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+    --font-mono: "SF Mono", ui-monospace, Menlo, Monaco, Consolas, monospace;
+    --font-serif: "New York", ui-serif, Georgia, Cambria, "Times New Roman", serif;
+  }
+
+  body {
+    font-family: var(--font-sans);
+    background-color: #FDFBFD;
+    color: #2B091C;
+    letter-spacing: -0.011em;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    overflow-x: hidden;
+  }
+
+  h1, h2, h3, h4, .font-display {
+    font-family: var(--font-display);
+    letter-spacing: -0.022em;
+    font-weight: 700;
+  }
+}
+
+.font-compact {
+  font-family: var(--font-compact);
+  letter-spacing: -0.015em;
+}
+
+.font-serif-ny {
+  font-family: var(--font-serif);
+}
+
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}
+
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
+}
+.scrollbar-none {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Soft grainy pink and plum gradients inspired by reference mockups */
+.bg-grainy-pink {
+  background-color: #FCE7F3;
+  background-image:
+    radial-gradient(at 15% 15%, rgba(244, 114, 182, 0.42) 0px, transparent 55%),
+    radial-gradient(at 85% 25%, rgba(251, 207, 232, 0.85) 0px, transparent 50%),
+    radial-gradient(at 50% 90%, rgba(236, 72, 153, 0.25) 0px, transparent 60%);
+}
+
+.bg-grainy-hero {
+  background: linear-gradient(135deg, #EC4899 0%, #F472B6 48%, #FBCFE8 100%);
+  position: relative;
+}
+
+.bg-grainy-plum {
+  background: linear-gradient(135deg, #3B0726 0%, #831843 60%, #9D174D 100%);
+}
+
+/* Stacked card list subtle offset effect */
+.stacked-card {
+  transition: transform 0.2s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.2s ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
