@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { X, Plus, Dumbbell } from 'lucide-react';
 import { MuscleCategory, EquipmentType, SpecificMuscleGroup, SPECIFIC_MUSCLE_GROUPS } from '../../types/fitness';
 import { useWorkout } from '../../context/WorkoutContext';
@@ -53,8 +54,8 @@ export const CustomExerciseModal: React.FC<CustomExerciseModalProps> = ({ isOpen
     }
   };
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#3B0726]/60 backdrop-blur-xs p-4 overflow-y-auto">
+  return createPortal(
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-[#3B0726]/60 backdrop-blur-xs p-4 overflow-y-auto">
       <div className="w-full max-w-md rounded-[32px] bg-[#FCFBF9] p-6 shadow-2xl border border-[#E6E1D8] my-6 animate-in fade-in zoom-in-95 duration-150">
         <div className="flex items-center justify-between pb-3 border-b border-[#F5B8EE]">
           <div className="flex items-center gap-2">
@@ -226,6 +227,7 @@ export const CustomExerciseModal: React.FC<CustomExerciseModalProps> = ({ isOpen
           </div>
         </form>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };

@@ -104,10 +104,10 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin, onOpenReg
         {/* 2. MAIN HERO CENTRÉ */}
         <section className="relative z-20 w-full max-w-6xl mx-auto pt-10 sm:pt-14 px-4 sm:px-6 text-center">
           <div className="w-full space-y-5">
-            <h1 className="font-display text-4xl sm:text-6xl font-bold text-[#2B091C] tracking-tight leading-[1.12] sm:leading-[1.06]">
+            <h1 className="font-display text-4xl sm:text-6xl font-bold text-[#2B091C] tracking-tight leading-[1.18] sm:leading-[1.15]">
               <span className="block sm:inline">Planifie.</span>{' '}
               <span className="block sm:inline">Entraîne-toi.</span>{' '}
-              <span className="block sm:inline font-extrabold italic bg-gradient-to-r from-[#831843] to-[#EC4899] bg-clip-text text-transparent">
+              <span className="block sm:inline-block font-extrabold italic bg-gradient-to-r from-[#831843] to-[#EC4899] bg-clip-text text-transparent pr-2.5 pb-1">
                 Progresse.
               </span>
             </h1>

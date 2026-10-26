@@ -14,8 +14,9 @@ import {
 } from '../../types/fitness';
 import { useWorkout } from '../../context/WorkoutContext';
 import { ExerciseDetailModal } from './ExerciseDetailModal';
-import { LegPressGuideModal } from './LegPressGuideModal';
+import { LegPressGuideModal, LegPressInlineGuide } from './LegPressGuideModal';
 import { CustomExerciseModal } from './CustomExerciseModal';
+import { MachineIllustration } from './MachineIllustration';
 import { getEquipmentBadge } from '../../utils/equipmentBadge';
 import { StreamlineIcon, getCategoryStreamlineIcon } from '../ui/StreamlineIcon';
 
@@ -111,22 +112,13 @@ export const ExercisesView: React.FC<ExercisesViewProps> = ({
 
   return (
     <div className="space-y-4 pb-12 animate-in fade-in duration-150">
-      {/* 1. Large Bold Header + Top-Right Circular Icon Actions (Directly inspired by reference image) */}
+      {/* 1. Large Bold Header + Top-Right Circular Icon Action */}
       <div className="flex items-center justify-between pt-1">
         <h1 className="text-3xl sm:text-4xl font-display font-bold tracking-tight text-[#2B091C]">
           Exercices
         </h1>
 
         <div className="flex items-center gap-2">
-          <button
-            onClick={() => setIsLegPressGuideOpen(true)}
-            className="h-10 px-3.5 rounded-full bg-[#F6EDF2] hover:bg-[#FCE7F3] text-[#831843] text-xs font-semibold flex items-center gap-1.5 transition-colors"
-            title="Guide 7 positions Presse"
-          >
-            <StreamlineIcon name="stretch" className="w-4 h-4 text-[#831843]" />
-            <span>Guide</span>
-          </button>
-
           <button
             onClick={() => setIsCustomModalOpen(true)}
             className="w-10 h-10 rounded-full bg-[#831843] hover:bg-[#3B0726] text-white flex items-center justify-center transition-colors"
@@ -137,7 +129,7 @@ export const ExercisesView: React.FC<ExercisesViewProps> = ({
         </div>
       </div>
 
-      {/* 2. Clean Inline Tabs with Count Pills (Like "Recents items 12  Saved 8" in reference image) */}
+      {/* 2. Clean Inline Tabs with Count Pills */}
       <div className="flex items-center gap-4 overflow-x-auto pb-1 scrollbar-none border-b border-[#F1E4EC]">
         {categories.map((cat) => {
           const isSelected =
@@ -224,7 +216,12 @@ export const ExercisesView: React.FC<ExercisesViewProps> = ({
         )}
       </div>
 
-      {/* 4. Clean Soft List Cards (Exact Reference Image Card Anatomy) */}
+      {/* Guide intégré à l'intérieur de la section « Bas du corps » */}
+      {!onlyFavorites && selectedCategory === 'lower-body' && (
+        <LegPressInlineGuide />
+      )}
+
+      {/* 4. Clean Soft List Cards */}
       <div className="space-y-2.5">
         {filteredExercises.length === 0 ? (
           <div className="p-8 rounded-[28px] bg-[#F6EDF2] text-center space-y-3">

@@ -164,6 +164,7 @@ export interface WorkoutExerciseItem {
   sets: ExerciseSet[];
   notes?: string;
   userSettings?: string; // ex: "siège cran 4"
+  replacedFrom?: string; // Nom de l'exercice d'origine si remplacé en cours de séance
 }
 
 export type WorkoutStatus = 'draft' | 'planned' | 'in_progress' | 'completed' | 'cancelled';

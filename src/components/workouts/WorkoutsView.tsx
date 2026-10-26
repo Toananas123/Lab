@@ -750,6 +750,20 @@ export const WorkoutsView: React.FC<WorkoutsViewProps> = ({ onStartActiveMode })
                         </>
                       )}
                     </div>
+                    {w.exercises.some((ex) => ex.replacedFrom) && (
+                      <div className="flex flex-wrap gap-1 pt-0.5">
+                        {w.exercises
+                          .filter((ex) => ex.replacedFrom)
+                          .map((ex) => (
+                            <span
+                              key={ex.id}
+                              className="inline-block px-2 py-0.5 rounded-full bg-white text-[#831843] text-[10px] font-semibold"
+                            >
+                              {ex.replacedFrom} remplacé par {ex.exerciseName}
+                            </span>
+                          ))}
+                      </div>
+                    )}
                   </div>
                 </div>
 

@@ -11,6 +11,7 @@ import { ActiveWorkoutView } from './components/workouts/ActiveWorkoutView';
 import { PlanningView } from './components/planning/PlanningView';
 import { ProgressView } from './components/progress/ProgressView';
 import { MeasurementsView } from './components/measurements/MeasurementsView';
+import { RunningView } from './components/running/RunningView';
 import { ProfileModal } from './components/profile/ProfileModal';
 import { AuthModal } from './components/auth/AuthModal';
 import { LandingPage } from './components/landing/LandingPage';
@@ -88,6 +89,7 @@ const AuthenticatedApp: React.FC = () => {
         onOpenProfile={() => setIsProfileModalOpen(true)}
         onLogout={logout}
         isDarkMode={isDarkWorkoutMode}
+        isLoggedIn={!!user}
       />
 
       {/* Main Content Area (no z-10 stacking trap so modals sit cleanly on top) */}
@@ -133,44 +135,48 @@ const AuthenticatedApp: React.FC = () => {
         )}
 
         <div className="max-w-xl lg:max-w-4xl mx-auto px-4 sm:px-6 pt-2 lg:pt-8 pb-28 lg:pb-14">
-          {currentTab === 'home' && (
-            <HomeView
-              onNavigateTab={(tab) => setCurrentTab(tab)}
-              onOpenCategory={handleOpenCategory}
-              onOpenMeasurements={handleOpenMeasurements}
-              onStartActiveMode={handleStartActiveMode}
-            />
-          )}
+          <div key={currentTab} className="liquid-tab-enter">
+            {currentTab === 'home' && (
+              <HomeView
+                onNavigateTab={(tab) => setCurrentTab(tab)}
+                onOpenCategory={handleOpenCategory}
+                onOpenMeasurements={handleOpenMeasurements}
+                onStartActiveMode={handleStartActiveMode}
+              />
+            )}
 
-          {currentTab === 'exercises' && (
-            <ExercisesView
-              initialCategory={exercisesFilterCategory}
-              onAddToActiveWorkout={() => setCurrentTab('active_workout')}
-            />
-          )}
+            {currentTab === 'exercises' && (
+              <ExercisesView
+                initialCategory={exercisesFilterCategory}
+                onAddToActiveWorkout={() => setCurrentTab('active_workout')}
+              />
+            )}
 
-          {currentTab === 'workouts' && (
-            <WorkoutsView onStartActiveMode={handleStartActiveMode} />
-          )}
+            {currentTab === 'workouts' && (
+              <WorkoutsView onStartActiveMode={handleStartActiveMode} />
+            )}
 
-          {currentTab === 'active_workout' && (
-            <ActiveWorkoutView
-              onFinishWorkout={() => setCurrentTab('home')}
-              onExit={() => setCurrentTab('home')}
-            />
-          )}
+            {currentTab === 'active_workout' && (
+              <ActiveWorkoutView
+                onFinishWorkout={() => setCurrentTab('home')}
+                onExit={() => setCurrentTab('home')}
+              />
+            )}
 
-          {currentTab === 'planning' && (
-            <PlanningView onStartActiveMode={handleStartActiveMode} />
-          )}
+            {currentTab === 'running' && <RunningView />}
 
-          {currentTab === 'progress' && (
-            <ProgressView onOpenMeasurements={handleOpenMeasurements} />
-          )}
+            {currentTab === 'planning' && (
+              <PlanningView onStartActiveMode={handleStartActiveMode} />
+            )}
 
-          {currentTab === 'measurements' && (
-            <MeasurementsView onBackToProgress={() => setCurrentTab('progress')} />
-          )}
+            {currentTab === 'progress' && (
+              <ProgressView onOpenMeasurements={handleOpenMeasurements} />
+            )}
+
+            {currentTab === 'measurements' && (
+              <MeasurementsView onBackToProgress={() => setCurrentTab('progress')} />
+            )}
+          </div>
         </div>
       </main>
 

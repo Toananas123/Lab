@@ -3,7 +3,7 @@ import { Plus, Music, User as UserIcon, LogOut, X } from 'lucide-react';
 import { StreamlineIcon, StreamlineIconName } from '../ui/StreamlineIcon';
 import { AppLogo } from '../ui/AppLogo';
 
-export type NavTab = 'home' | 'exercises' | 'workouts' | 'planning' | 'progress';
+export type NavTab = 'home' | 'exercises' | 'workouts' | 'planning' | 'progress' | 'running';
 
 interface BottomNavProps {
   activeTab: NavTab;
@@ -16,6 +16,7 @@ interface BottomNavProps {
   onOpenProfile?: () => void;
   onLogout?: () => void;
   isDarkMode?: boolean;
+  isLoggedIn?: boolean;
 }
 
 export const BottomNav: React.FC<BottomNavProps> = ({
@@ -29,18 +30,21 @@ export const BottomNav: React.FC<BottomNavProps> = ({
   onOpenProfile,
   onLogout,
   isDarkMode = false,
+  isLoggedIn = false,
 }) => {
-  const mainTabs: { id: NavTab; label: string; icon: StreamlineIconName }[] = [
+  const mainTabs: { id: NavTab; label: string; icon: StreamlineIconName; special?: boolean }[] = [
     { id: 'home', label: 'Accueil', icon: 'home' },
     { id: 'exercises', label: 'Exercices', icon: 'dumbbell' },
+    ...(isLoggedIn ? [{ id: 'running' as NavTab, label: 'Running', icon: 'runner' as StreamlineIconName, special: true }] : []),
     { id: 'planning', label: 'Planning', icon: 'calendar' },
     { id: 'progress', label: 'Suivi', icon: 'heart-pulse' },
   ];
 
-  const allDesktopTabs: { id: NavTab; label: string; icon: StreamlineIconName }[] = [
+  const allDesktopTabs: { id: NavTab; label: string; icon: StreamlineIconName; special?: boolean }[] = [
     { id: 'home', label: 'Accueil', icon: 'home' },
     { id: 'exercises', label: 'Exercices', icon: 'dumbbell' },
     { id: 'workouts', label: 'Séances', icon: 'weightlifter' },
+    ...(isLoggedIn ? [{ id: 'running' as NavTab, label: 'Running (⚡ Spécial)', icon: 'runner' as StreamlineIconName, special: true }] : []),
     { id: 'planning', label: 'Planning', icon: 'calendar' },
     { id: 'progress', label: 'Suivi', icon: 'heart-pulse' },
   ];

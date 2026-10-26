@@ -1393,9 +1393,16 @@ export const ProgressView: React.FC<ProgressViewProps> = () => {
                               key={ex.id}
                               className="p-3 rounded-2xl bg-white space-y-1.5"
                             >
-                              <span className="font-display font-bold text-xs text-[#2B091C] block">
-                                {ex.exerciseName}
-                              </span>
+                              <div className="flex flex-wrap items-center justify-between gap-2">
+                                <span className="font-display font-bold text-xs text-[#2B091C] block">
+                                  {ex.exerciseName}
+                                </span>
+                                {ex.replacedFrom && (
+                                  <span className="px-2 py-0.5 rounded-full bg-[#FCE7F3] text-[#831843] text-[10px] font-semibold">
+                                    {ex.replacedFrom} remplacé par {ex.exerciseName}
+                                  </span>
+                                )}
+                              </div>
                               <div className="flex flex-wrap gap-1.5">
                                 {(ex.sets || []).map((s, idx) => (
                                   <span

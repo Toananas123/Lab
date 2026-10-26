@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import {
   Star,
   Plus,
@@ -9,6 +10,7 @@ import { Exercise } from '../../types/fitness';
 import { useWorkout } from '../../context/WorkoutContext';
 import { getEquipmentBadge } from '../../utils/equipmentBadge';
 import { StreamlineIcon, getCategoryStreamlineIcon } from '../ui/StreamlineIcon';
+import { MachineIllustration } from './MachineIllustration';
 
 interface ExerciseDetailModalProps {
   exercise: Exercise | null;
@@ -35,6 +37,7 @@ export const ExerciseDetailModal: React.FC<ExerciseDetailModalProps> = ({
 
   const [customSettings, setCustomSettings] = useState('');
   const [settingsSaved, setSettingsSaved] = useState(false);
+  const scrollContainerRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     if (exercise && exerciseSettings[exercise.id]) {
@@ -43,7 +46,10 @@ export const ExerciseDetailModal: React.FC<ExerciseDetailModalProps> = ({
       setCustomSettings('');
     }
     setSettingsSaved(false);
-  }, [exercise, exerciseSettings]);
+    if (isOpen && scrollContainerRef.current) {
+      scrollContainerRef.current.scrollTop = 0;
+    }
+  }, [exercise, exerciseSettings, isOpen]);
 
   if (!isOpen || !exercise) return null;
 
@@ -63,16 +69,16 @@ export const ExerciseDetailModal: React.FC<ExerciseDetailModalProps> = ({
     ...(exercise.commonMistakes || []),
   ];
 
-  return (
+  return createPortal(
     <div
-      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-[#2B091C]/40 backdrop-blur-xs p-0 sm:p-4"
+      className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center bg-[#2B091C]/45 backdrop-blur-xs p-0 sm:p-4"
       onClick={onClose}
     >
       <div
-        className="w-full sm:max-w-lg max-h-[92vh] rounded-t-[36px] sm:rounded-[36px] bg-[#F6EDF2] flex flex-col overflow-hidden shadow-2xl animate-in slide-in-from-bottom duration-200"
+        className="w-full sm:max-w-lg max-h-[90vh] rounded-t-[36px] sm:rounded-[36px] bg-[#F6EDF2] flex flex-col overflow-hidden shadow-2xl animate-in slide-in-from-bottom duration-200"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Top Bar (Exact Reference Image Right Screen: Left `<` circle, Center Pill, Right Star circle) */}
+        {/* Top Bar */}
         <div className="flex items-center justify-between px-5 pt-5 pb-3 shrink-0">
           <button
             type="button"
@@ -101,13 +107,13 @@ export const ExerciseDetailModal: React.FC<ExerciseDetailModalProps> = ({
         </div>
 
         {/* Scrollable Content */}
-        <div className="flex-1 overflow-y-auto px-5 pb-6 space-y-5">
-          {/* Center Hero Visual + Centered Title (like Pringles showcase in reference image) */}
+        <div ref={scrollContainerRef} className="flex-1 overflow-y-auto px-5 pb-6 space-y-5">
+          {/* Center Hero Visual + Centered Title */}
           <div className="text-center space-y-3 py-2">
-            <div className="w-24 h-24 rounded-[28px] bg-white shadow-md mx-auto flex items-center justify-center text-[#831843]">
+            <div className="w-20 h-20 rounded-[26px] bg-white shadow-md mx-auto flex items-center justify-center text-[#831843]">
               <StreamlineIcon
                 name={getCategoryStreamlineIcon(exercise.category)}
-                className="w-11 h-11 text-[#EC4899]"
+                className="w-10 h-10 text-[#EC4899]"
               />
             </div>
 
@@ -120,6 +126,9 @@ export const ExerciseDetailModal: React.FC<ExerciseDetailModalProps> = ({
               </p>
             </div>
           </div>
+
+          {/* Dedicated Section: Image de la machine */}
+          <MachineIllustration exercise={exercise} variant="section" />
 
           {/* Card 1: Repères & Réglages (Clean White Grouped Card with Hairline Dividers) */}
           <div className="rounded-[28px] bg-white p-5 shadow-2xs space-y-3">
@@ -264,6 +273,7 @@ export const ExerciseDetailModal: React.FC<ExerciseDetailModalProps> = ({
           </div>
         )}
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };

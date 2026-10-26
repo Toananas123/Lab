@@ -6,12 +6,16 @@ import {
   Music,
   X,
   RotateCcw,
-  Lightbulb,
   Plus,
   Minus,
+  ArrowLeftRight,
+  Star,
+  ArrowDownToLine,
+  Eye,
+  EyeOff,
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
-import { Workout, WorkoutExerciseItem, ExerciseSet } from '../../types/fitness';
+import { WorkoutExerciseItem, ExerciseSet, Exercise } from '../../types/fitness';
 import { useWorkout } from '../../context/WorkoutContext';
 import { useAuth } from '../../context/AuthContext';
 import { playRestCompleteSound } from '../../utils/audio';
@@ -20,6 +24,7 @@ import { WarmupAndStretchingGuide } from './WarmupAndStretchingGuide';
 import { StreamlineIcon } from '../ui/StreamlineIcon';
 import { BottomSheet } from '../ui/BottomSheet';
 import { CARDIO_FINISHER_PRESETS, ABDOS_FINISHER_PRESETS } from '../planning/PlanningView';
+import { MachineIllustration } from '../exercises/MachineIllustration';
 
 interface ActiveWorkoutViewProps {
   onFinishWorkout: () => void;
@@ -34,11 +39,18 @@ export const ActiveWorkoutView: React.FC<ActiveWorkoutViewProps> = ({ onFinishWo
     cancelActiveWorkout,
     getPreviousPerformance,
     getPersonalRecords,
+    allExercises,
+    favorites,
   } = useWorkout();
   const { profile, updateUserProfile } = useAuth();
 
   const [restTimerSeconds, setRestTimerSeconds] = useState<number | null>(null);
   const [isTimerRunning, setIsTimerRunning] = useState(false);
+
+  // Swap exercise state (2-tap inline replacement + immediate Undo)
+  const [openSwapIndex, setOpenSwapIndex] = useState<number | null>(null);
+  const [undoSnapshots, setUndoSnapshots] = useState<Record<string, WorkoutExerciseItem>>({});
+  const [openMachinePreviewIds, setOpenMachinePreviewIds] = useState<Record<string, boolean>>({});
 
   // 1-tap Finisher, Water, Rating & Notes directly accessible
   const [finisherTypeChoice, setFinisherTypeChoice] = useState<'none' | 'cardio' | 'abs'>(
@@ -129,6 +141,134 @@ export const ActiveWorkoutView: React.FC<ActiveWorkoutViewProps> = ({ onFinishWo
   const handleStartRestTimer = (seconds: number) => {
     setRestTimerSeconds(seconds);
     setIsTimerRunning(true);
+  };
+
+  // Compute 2 to 3 smart alternatives targeting the same primary muscle
+  // Prioritizing: 1. Favorites, 2. Same equipment type. Never proposing exercises already in the workout.
+  const getAlternativesForExercise = (exerciseItem: WorkoutExerciseItem): Exercise[] => {
+    const presentIds = new Set(activeWorkout.exercises.map((e) => e.exerciseId));
+    const currentCatalogEx = allExercises.find((e) => e.id === exerciseItem.exerciseId);
+
+    const availablePool = allExercises.filter((ex) => !presentIds.has(ex.id));
+
+    // Match same specificMuscle or primaryMuscle first
+    let sameMuscleCandidates = availablePool.filter((ex) => {
+      if (currentCatalogEx?.specificMuscle && ex.specificMuscle) {
+        return ex.specificMuscle === currentCatalogEx.specificMuscle;
+      }
+      if (currentCatalogEx?.primaryMuscle) {
+        return ex.primaryMuscle.toLowerCase() === currentCatalogEx.primaryMuscle.toLowerCase();
+      }
+      return ex.category === exerciseItem.category;
+    });
+
+    // If no exact specificMuscle match, fall back to same category
+    if (sameMuscleCandidates.length === 0) {
+      sameMuscleCandidates = availablePool.filter((ex) => ex.category === exerciseItem.category);
+    }
+
+    return sameMuscleCandidates
+      .sort((a, b) => {
+        const aFav = favorites.includes(a.id) ? 1 : 0;
+        const bFav = favorites.includes(b.id) ? 1 : 0;
+        if (bFav !== aFav) return bFav - aFav;
+
+        const aEquip = a.equipment === exerciseItem.equipment ? 1 : 0;
+        const bEquip = b.equipment === exerciseItem.equipment ? 1 : 0;
+        if (bEquip !== aEquip) return bEquip - aEquip;
+
+        return a.name.localeCompare(b.name, 'fr');
+      })
+      .slice(0, 3);
+  };
+
+  // Replace exercise at exIdx in 1 tap after opening alternatives
+  const handleReplaceExercise = (exIdx: number, newExercise: Exercise) => {
+    const updatedExercises = [...activeWorkout.exercises];
+    const oldItem = updatedExercises[exIdx];
+    const newPrevPerf = getPreviousPerformance(newExercise.id);
+
+    // Save snapshot for immediate undo
+    setUndoSnapshots((prev) => ({
+      ...prev,
+      [oldItem.id]: JSON.parse(JSON.stringify(oldItem)),
+    }));
+
+    // Keep same number of sets and target reps; preserve already completed sets;
+    // prefill weight for uncompleted sets from last performance of the new exercise if available
+    const fallbackWeight = newPrevPerf
+      ? newPrevPerf.weight
+      : oldItem.sets[0]?.targetWeight ?? 20;
+
+    const updatedSets: ExerciseSet[] = oldItem.sets.map((s) => {
+      if (s.completed) {
+        return { ...s };
+      }
+      return {
+        ...s,
+        targetWeight: fallbackWeight,
+        actualWeight: fallbackWeight,
+        // Keep the same targetReps
+        targetReps: s.targetReps,
+        actualReps: s.targetReps,
+      };
+    });
+
+    const originalName = oldItem.replacedFrom || oldItem.exerciseName;
+
+    updatedExercises[exIdx] = {
+      ...oldItem,
+      exerciseId: newExercise.id,
+      exerciseName: newExercise.name,
+      category: newExercise.category,
+      equipment: newExercise.equipment,
+      restSeconds: oldItem.restSeconds || newExercise.defaultRestSeconds,
+      sets: updatedSets,
+      replacedFrom: originalName,
+    };
+
+    updateActiveWorkout({
+      ...activeWorkout,
+      exercises: updatedExercises,
+    });
+    setOpenSwapIndex(null);
+  };
+
+  // Undo replacement immediately after
+  const handleUndoReplace = (exIdx: number, itemId: string) => {
+    const snapshot = undoSnapshots[itemId];
+    if (!snapshot) return;
+
+    const updatedExercises = [...activeWorkout.exercises];
+    updatedExercises[exIdx] = snapshot;
+
+    updateActiveWorkout({
+      ...activeWorkout,
+      exercises: updatedExercises,
+    });
+
+    setUndoSnapshots((prev) => {
+      const next = { ...prev };
+      delete next[itemId];
+      return next;
+    });
+  };
+
+  // Postpone exercise to the end of the workout if machine is busy / no alternative
+  const handlePostponeExerciseToEnd = (exIdx: number) => {
+    if (exIdx >= activeWorkout.exercises.length - 1) {
+      setOpenSwapIndex(null);
+      return;
+    }
+    const updatedExercises = [...activeWorkout.exercises];
+    const [movedItem] = updatedExercises.splice(exIdx, 1);
+    updatedExercises.push(movedItem);
+
+    updateActiveWorkout({
+      ...activeWorkout,
+      exercises: updatedExercises,
+    });
+    setOpenSwapIndex(null);
   };
 
   // Toggle set completion with animated checkmark + auto rest timer
@@ -265,7 +405,7 @@ export const ActiveWorkoutView: React.FC<ActiveWorkoutViewProps> = ({ onFinishWo
   };
 
   return (
-    <div className="space-y-4 pb-32 animate-in fade-in duration-200">
+    <div className="space-y-4 pb-48 lg:pb-28 animate-in fade-in duration-200">
       {/* Top Bar: Épurée, fluide & minimaliste */}
       <div className="flex items-center justify-between gap-3 bg-[#13030E]/90 backdrop-blur-xl p-3 sm:p-3.5 rounded-2xl sm:rounded-full border border-white/8 shadow-sm">
         <div className="flex items-center gap-2.5 min-w-0">
@@ -283,6 +423,17 @@ export const ActiveWorkoutView: React.FC<ActiveWorkoutViewProps> = ({ onFinishWo
         </div>
 
         <div className="flex items-center gap-1.5 shrink-0">
+          {/* Quick Finish Button in Top Bar */}
+          <button
+            type="button"
+            onClick={handleFinishSession}
+            className="h-9 px-3 rounded-full bg-gradient-to-r from-[#831843] to-[#EC4899] hover:opacity-95 text-white flex items-center gap-1.5 text-xs font-bold transition-all active:scale-95 shadow-sm cursor-pointer shrink-0"
+            title="Terminer la séance"
+          >
+            <Check className="w-3.5 h-3.5 stroke-[2.75]" />
+            <span className="hidden sm:inline">Terminer</span>
+          </button>
+
           {/* Quick Water Button */}
           <button
             type="button"
@@ -393,7 +544,7 @@ export const ActiveWorkoutView: React.FC<ActiveWorkoutViewProps> = ({ onFinishWo
         </div>
       )}
 
-      {/* Exercise Cards List (Épurée) */}
+      {/* Exercise Cards List */}
       <div className="space-y-3.5">
         {activeWorkout.exercises.map((exerciseItem, exIdx) => {
           const prevPerf = getPreviousPerformance(exerciseItem.exerciseId);
@@ -406,6 +557,10 @@ export const ActiveWorkoutView: React.FC<ActiveWorkoutViewProps> = ({ onFinishWo
             ? Number((prevPerf.weight + (exerciseItem.equipment === 'dumbbell' ? 1 : 2.5)).toFixed(1))
             : null;
           const allDone = exerciseItem.sets.every((s) => s.completed);
+          const isSwapOpen = openSwapIndex === exIdx;
+          const alternatives = isSwapOpen ? getAlternativesForExercise(exerciseItem) : [];
+          const catalogEx = allExercises.find((e) => e.id === exerciseItem.exerciseId);
+          const isMachineVisible = !!openMachinePreviewIds[exerciseItem.id];
 
           return (
             <div
@@ -416,10 +571,10 @@ export const ActiveWorkoutView: React.FC<ActiveWorkoutViewProps> = ({ onFinishWo
                   : 'bg-[#150310] border-white/8'
               }`}
             >
-              {/* Card Header: Minimal Title + Series count */}
-              <div className="flex items-center justify-between gap-2.5 pb-2.5 border-b border-white/6">
-                <div className="min-w-0">
-                  <div className="flex items-center gap-2">
+              {/* Card Header: Title + Swap Action + Series Stepper */}
+              <div className="flex items-start justify-between gap-2.5 pb-2.5 border-b border-white/6">
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center gap-2">
                     <span className="text-[10px] font-extrabold text-[#EC4899] uppercase tracking-wider">
                       Ex {exIdx + 1}
                     </span>
@@ -437,9 +592,28 @@ export const ActiveWorkoutView: React.FC<ActiveWorkoutViewProps> = ({ onFinishWo
                   <h2 className="font-display font-bold text-base sm:text-lg text-white mt-0.5 truncate">
                     {exerciseItem.exerciseName}
                   </h2>
+
+                  {/* Trace of replacement + 1-tap Undo */}
+                  {exerciseItem.replacedFrom && (
+                    <div className="mt-1.5 inline-flex flex-wrap items-center gap-2 px-2.5 py-1 rounded-xl bg-[#EC4899]/15 border border-[#EC4899]/30 text-[11px] text-[#FBCFE8]">
+                      <span>
+                        Remplacé (ancien : <strong className="text-white">{exerciseItem.replacedFrom}</strong>)
+                      </span>
+                      {undoSnapshots[exerciseItem.id] && (
+                        <button
+                          type="button"
+                          onClick={() => handleUndoReplace(exIdx, exerciseItem.id)}
+                          className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-white text-[#831843] font-bold text-[10px] hover:bg-[#FCE7F3] transition-colors cursor-pointer"
+                        >
+                          <RotateCcw className="w-2.5 h-2.5" />
+                          <span>Annuler</span>
+                        </button>
+                      )}
+                    </div>
+                  )}
                 </div>
 
-                {/* Stepper to adjust series count */}
+                {/* Right controls: Stepper to adjust series count */}
                 <div className="flex items-center gap-1 bg-white/5 px-2 py-1 rounded-full border border-white/10 shrink-0">
                   <button
                     type="button"
@@ -463,6 +637,149 @@ export const ActiveWorkoutView: React.FC<ActiveWorkoutViewProps> = ({ onFinishWo
                   </button>
                 </div>
               </div>
+
+              {/* Action Bar: Changer d'exercice (machine occupée) + Voir image machine */}
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <button
+                  type="button"
+                  onClick={() => setOpenSwapIndex(isSwapOpen ? null : exIdx)}
+                  className={`px-3 py-1.5 rounded-full text-[11px] font-bold inline-flex items-center gap-1.5 transition-all cursor-pointer ${
+                    isSwapOpen
+                      ? 'bg-[#EC4899] text-white'
+                      : 'bg-white/8 hover:bg-white/15 text-[#FBCFE8] border border-white/10'
+                  }`}
+                >
+                  <ArrowLeftRight className="w-3.5 h-3.5" />
+                  <span>Changer d’exercice</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() =>
+                    setOpenMachinePreviewIds((prev) => ({
+                      ...prev,
+                      [exerciseItem.id]: !prev[exerciseItem.id],
+                    }))
+                  }
+                  className="px-3 py-1.5 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 text-[11px] font-semibold text-[#C29DB2] hover:text-white inline-flex items-center gap-1.5 transition-all cursor-pointer"
+                >
+                  {isMachineVisible ? (
+                    <EyeOff className="w-3.5 h-3.5 text-[#EC4899]" />
+                  ) : (
+                    <Eye className="w-3.5 h-3.5 text-[#EC4899]" />
+                  )}
+                  <span>{isMachineVisible ? 'Masquer la machine' : 'Image de la machine'}</span>
+                </button>
+              </div>
+
+              {/* Section Image de la machine (expandable in active workout) */}
+              {isMachineVisible && (
+                <MachineIllustration
+                  exercise={{
+                    id: exerciseItem.exerciseId,
+                    name: exerciseItem.exerciseName,
+                    equipment: exerciseItem.equipment,
+                    category: exerciseItem.category,
+                    machineSetup: catalogEx?.machineSetup,
+                    imageUrl: catalogEx?.imageUrl,
+                  }}
+                  variant="dark_workout"
+                />
+              )}
+
+              {/* 2-Tap Inline Exercise Replacement Tray */}
+              {isSwapOpen && (
+                <div className="p-3.5 rounded-2xl bg-[#210519] border border-[#EC4899]/40 space-y-2.5 animate-in fade-in duration-150">
+                  <div className="flex items-center justify-between gap-2">
+                    <div>
+                      <span className="text-[10px] font-extrabold uppercase tracking-wider text-[#EC4899] block">
+                        Machine occupée ? · Même muscle ciblé
+                      </span>
+                      <p className="text-xs font-bold text-white">
+                        Choisis une alternative (conserve tes {exerciseItem.sets.length} séries) :
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setOpenSwapIndex(null)}
+                      className="w-7 h-7 rounded-full bg-white/10 text-[#FBCFE8] hover:text-white flex items-center justify-center"
+                      aria-label="Fermer"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+
+                  {alternatives.length > 0 ? (
+                    <div className="space-y-2">
+                      {alternatives.map((alt) => {
+                        const isFav = favorites.includes(alt.id);
+                        const altPrev = getPreviousPerformance(alt.id);
+                        const sameEquip = alt.equipment === exerciseItem.equipment;
+
+                        return (
+                          <button
+                            key={alt.id}
+                            type="button"
+                            onClick={() => handleReplaceExercise(exIdx, alt)}
+                            className="w-full p-3 rounded-xl bg-white/6 hover:bg-[#EC4899]/20 border border-white/10 hover:border-[#EC4899] text-left flex items-center justify-between gap-3 transition-all active:scale-99 cursor-pointer"
+                          >
+                            <div className="min-w-0 flex-1 space-y-0.5">
+                              <div className="flex items-center gap-1.5">
+                                {isFav && (
+                                  <Star className="w-3.5 h-3.5 fill-[#EC4899] text-[#EC4899] shrink-0" />
+                                )}
+                                <span className="font-display font-bold text-xs sm:text-sm text-white truncate">
+                                  {alt.name}
+                                </span>
+                              </div>
+                              <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] text-[#C29DB2]">
+                                <span className="text-[#FBCFE8] font-medium">
+                                  {alt.primaryMuscle}
+                                </span>
+                                <span>·</span>
+                                <span>
+                                  {getEquipmentBadge(alt.equipment).label}
+                                  {sameEquip ? ' (même matériel)' : ''}
+                                </span>
+                                {altPrev && (
+                                  <>
+                                    <span>·</span>
+                                    <span className="font-mono font-bold text-[#EC4899]">
+                                      Dernière charge : {altPrev.weight} kg
+                                    </span>
+                                  </>
+                                )}
+                              </div>
+                            </div>
+
+                            <span className="px-3 py-1.5 rounded-full bg-[#EC4899] text-white font-bold text-[11px] shrink-0">
+                              Remplacer
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <div className="p-3 rounded-xl bg-white/5 text-xs text-[#FBCFE8] space-y-2">
+                      <p>
+                        Aucune autre alternative disponible pour ce muscle (les exercices similaires sont déjà dans ta séance).
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Option to postpone to the end of the session */}
+                  {exIdx < activeWorkout.exercises.length - 1 && (
+                    <button
+                      type="button"
+                      onClick={() => handlePostponeExerciseToEnd(exIdx)}
+                      className="w-full py-2.5 px-3 rounded-xl bg-white/8 hover:bg-white/15 text-[#FBCFE8] font-bold text-xs flex items-center justify-center gap-2 transition-colors cursor-pointer"
+                    >
+                      <ArrowDownToLine className="w-3.5 h-3.5 text-[#EC4899]" />
+                      <span>Reporter cet exercice à la fin de la séance</span>
+                    </button>
+                  )}
+                </div>
+              )}
 
               {/* Minimalist previous performance reminder */}
               {prevPerf && (
@@ -692,12 +1009,12 @@ export const ActiveWorkoutView: React.FC<ActiveWorkoutViewProps> = ({ onFinishWo
         />
       </div>
 
-      {/* Sticky Bottom Button: Terminer la séance (Épuré) */}
-      <div className="fixed bottom-20 lg:bottom-6 left-4 right-4 lg:left-72 lg:right-8 z-30 max-w-xl mx-auto">
+      {/* Sticky Bottom Button: Terminer la séance (Positionné au-dessus de la barre de navigation sans chevauchement) */}
+      <div className="fixed bottom-[calc(5.75rem+env(safe-area-inset-bottom))] lg:bottom-6 left-4 right-4 lg:left-60 lg:right-0 z-40 max-w-xl mx-auto pointer-events-none">
         <button
           type="button"
           onClick={handleFinishSession}
-          className="w-full py-3.5 px-6 rounded-full bg-gradient-to-r from-[#831843] via-[#BE185D] to-[#EC4899] hover:opacity-95 text-white font-display font-extrabold text-sm flex items-center justify-center gap-2 shadow-xl shadow-black/40 active:scale-98 transition-all min-h-[50px]"
+          className="pointer-events-auto w-full py-3.5 px-6 rounded-full bg-gradient-to-r from-[#831843] via-[#BE185D] to-[#EC4899] hover:opacity-95 text-white font-display font-extrabold text-sm sm:text-base flex items-center justify-center gap-2 shadow-2xl shadow-black/60 active:scale-98 transition-all min-h-[52px] border border-white/20 cursor-pointer"
         >
           <Check className="w-4 h-4 stroke-[2.75]" />
           <span>Terminer la séance ({completedSets}/{totalSets})</span>
