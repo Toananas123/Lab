@@ -302,6 +302,26 @@ export const HomeView: React.FC<HomeViewProps> = ({
         </h1>
       </div>
 
+      {/* Photo de Donald Trump sur la page d'accueil */}
+      <div className="relative overflow-hidden rounded-[28px] bg-[#F6EDF2] border border-[#FBCFE8] p-3.5 sm:p-4 flex items-center gap-4 shadow-2xs">
+        <img
+          src="/assets/trump.jpg"
+          alt="Donald Trump"
+          className="w-20 h-24 sm:w-24 sm:h-28 rounded-2xl object-cover object-top shrink-0 border border-white shadow-xs"
+        />
+        <div className="min-w-0">
+          <span className="text-[10px] font-bold uppercase tracking-wider text-[#831843] bg-white/80 px-2.5 py-1 rounded-full inline-block mb-1.5">
+            À la une
+          </span>
+          <h2 className="font-display font-bold text-base sm:text-lg text-[#2B091C] leading-snug">
+            Donald Trump
+          </h2>
+          <p className="text-xs text-[#7A616F] mt-0.5">
+            Photo officielle sur ta page d’accueil
+          </p>
+        </div>
+      </div>
+
       {/* 2. Planning : 3 prochains jours (sans troncature du mot Aujourd'hui ni débordement du titre) */}
       <div className="space-y-2.5">
         <div className="flex items-center justify-between px-1">

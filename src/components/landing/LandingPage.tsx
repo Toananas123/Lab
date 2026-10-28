@@ -133,6 +133,28 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenLogin, onOpenReg
                 <span>J’ai déjà un compte</span>
               </button>
             </div>
+
+            {/* Photo de Donald Trump sur la page d'accueil */}
+            <div className="pt-4 flex justify-center">
+              <div className="inline-flex items-center gap-4 p-3 pr-5 rounded-[26px] bg-white/90 border border-[#FBCFE8] shadow-sm text-left">
+                <img
+                  src="/assets/trump.jpg"
+                  alt="Donald Trump"
+                  className="w-16 h-20 sm:w-20 sm:h-24 rounded-2xl object-cover object-top shrink-0 border border-[#FBCFE8]"
+                />
+                <div>
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-[#831843] bg-[#FCE7F3] px-2.5 py-0.5 rounded-full inline-block mb-1">
+                    Accueil
+                  </span>
+                  <p className="font-display font-bold text-sm sm:text-base text-[#2B091C]">
+                    Donald Trump
+                  </p>
+                  <p className="text-xs text-[#7A616F]">
+                    Portrait officiel
+                  </p>
+                </div>
+              </div>
+            </div>
           </div>
         </section>
       </div>
