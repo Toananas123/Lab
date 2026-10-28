@@ -164,6 +164,47 @@ export const REQUESTED_EXERCISES: Exercise[] = [
     },
   },
   {
+    id: 'single-leg-press',
+    name: 'Presse à cuisses unilatérale (Single Leg Press)',
+    category: 'lower-body',
+    specificMuscle: 'fessiers',
+    primaryMuscle: 'Grand fessier & Quadriceps unilatéral',
+    secondaryMuscles: ['Ischios', 'Adducteurs'],
+    equipment: 'machine',
+    description: 'Poussée d’une seule jambe à la presse 45° pour isoler chaque côté, corriger les déséquilibres et maximiser le recrutement fessier sous amplitude complète.',
+    startingPosition: 'Assise au fond du siège, dos plaqué, un seul pied posé haut et au centre du plateau, l’autre jambe relâchée hors trajectoire.',
+    steps: [
+      'Déverrouillez le plateau avec les poignées de sécurité.',
+      'Fléchissez le genou pour descendre le plateau avec contrôle vers la poitrine.',
+      'Descendez jusqu’à former un angle de 90° à la hanche sans décoller le bas du dos.',
+      'Poussez fermement à travers le talon sans verrouiller le genou en extension.',
+      'Effectuez toutes les répétitions d’un côté avant d’alterner.'
+    ],
+    breathing: 'Inspirez à la descente, expirez puissamment pendant la poussée.',
+    formTips: [
+      'Pied placé en haut du plateau pour recruter intensément le grand fessier.',
+      'Gardez le genou aligné avec la pointe du pied pendant toute la trajectoire.'
+    ],
+    commonMistakes: [
+      'Décoller la hanche du côté de la jambe qui pousse.',
+      'Verrouiller le genou brutalement en haut.'
+    ],
+    avoidTips: [
+      'Ne laissez jamais le genou s’effondrer vers l’intérieur lors de la poussée.'
+    ],
+    defaultSets: 3,
+    defaultReps: '10-12 / jambe',
+    defaultRestSeconds: 75,
+    hasFootPlacementGuide: true,
+    machineSetup: {
+      diagramType: 'leg_press',
+      seatSetting: 'Dossier réglé à 45°, bassin plaqué',
+      footPosition: 'Un seul pied haut au milieu du plateau, pointe légèrement ouverte à 15°',
+      gripWidth: 'Poignées latérales tenues fermement pour maintenir le bassin au fond du siège',
+      safetyCue: 'Pousser dans le talon, conserver un micro-fléchissement en haut',
+    },
+  },
+  {
     id: 'barbell-back-squat',
     name: 'Squats à la barre libre',
     category: 'lower-body',

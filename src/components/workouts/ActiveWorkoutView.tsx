@@ -25,6 +25,7 @@ import { StreamlineIcon } from '../ui/StreamlineIcon';
 import { BottomSheet } from '../ui/BottomSheet';
 import { CARDIO_FINISHER_PRESETS, ABDOS_FINISHER_PRESETS } from '../planning/PlanningView';
 import { MachineIllustration } from '../exercises/MachineIllustration';
+import { PersonalGearReminder } from '../common/PersonalGearReminder';
 
 interface ActiveWorkoutViewProps {
   onFinishWorkout: () => void;
@@ -543,6 +544,13 @@ export const ActiveWorkoutView: React.FC<ActiveWorkoutViewProps> = ({ onFinishWo
           </button>
         </div>
       )}
+
+      {/* Matériel personnel à ne pas oublier pour la séance */}
+      <PersonalGearReminder
+        exercises={activeWorkout.exercises}
+        variant="banner"
+        title="Pense à prendre ton matériel avant de démarrer !"
+      />
 
       {/* Exercise Cards List */}
       <div className="space-y-3.5">

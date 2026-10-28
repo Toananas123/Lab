@@ -11,6 +11,7 @@ import { useWorkout } from '../../context/WorkoutContext';
 import { getEquipmentBadge } from '../../utils/equipmentBadge';
 import { StreamlineIcon, getCategoryStreamlineIcon } from '../ui/StreamlineIcon';
 import { MachineIllustration } from './MachineIllustration';
+import { PersonalGearReminder } from '../common/PersonalGearReminder';
 
 interface ExerciseDetailModalProps {
   exercise: Exercise | null;
@@ -243,6 +244,9 @@ export const ExerciseDetailModal: React.FC<ExerciseDetailModalProps> = ({
               </div>
             </div>
           )}
+
+          {/* Encart Matériel personnel à ne pas oublier */}
+          <PersonalGearReminder exercise={exercise} variant="detail" />
 
           {exercise.hasFootPlacementGuide && onOpenLegPressGuide && (
             <button

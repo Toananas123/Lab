@@ -5,6 +5,8 @@ import {
   Trash2,
   Star,
   ChevronRight,
+  ChevronDown,
+  ChevronUp,
 } from 'lucide-react';
 import {
   Exercise,
@@ -14,9 +16,11 @@ import {
 } from '../../types/fitness';
 import { useWorkout } from '../../context/WorkoutContext';
 import { ExerciseDetailModal } from './ExerciseDetailModal';
-import { LegPressGuideModal, LegPressInlineGuide } from './LegPressGuideModal';
+import { LegPressGuideModal, LegPressGuideContent } from './LegPressGuideModal';
 import { CustomExerciseModal } from './CustomExerciseModal';
 import { MachineIllustration } from './MachineIllustration';
+import { LegDayStructureContent } from '../workouts/LegDayStructureCard';
+import { PersonalGearReminder } from '../common/PersonalGearReminder';
 import { getEquipmentBadge } from '../../utils/equipmentBadge';
 import { StreamlineIcon, getCategoryStreamlineIcon } from '../ui/StreamlineIcon';
 
@@ -47,6 +51,8 @@ export const ExercisesView: React.FC<ExercisesViewProps> = ({
   const [selectedExercise, setSelectedExercise] = useState<Exercise | null>(null);
   const [isLegPressGuideOpen, setIsLegPressGuideOpen] = useState(false);
   const [isCustomModalOpen, setIsCustomModalOpen] = useState(false);
+  const [activeLowerGuide, setActiveLowerGuide] = useState<'legday' | 'legpress' | null>(null);
+  const [selectedFootPlacement, setSelectedFootPlacement] = useState('high-wide');
 
   const categories: { id: MuscleCategory | 'all' | 'fav'; label: string; count: number }[] = [
     {
@@ -216,9 +222,95 @@ export const ExercisesView: React.FC<ExercisesViewProps> = ({
         )}
       </div>
 
-      {/* Guide intégré à l'intérieur de la section « Bas du corps » */}
+      {/* Guide de structure Leg Day & Guide Presse sur la même ligne avec le même aspect */}
       {!onlyFavorites && selectedCategory === 'lower-body' && (
-        <LegPressInlineGuide />
+        <div className="space-y-2.5">
+          <div className="grid grid-cols-2 gap-2.5">
+            {/* Guide 1 : Comment structurer son leg day ? */}
+            <button
+              type="button"
+              onClick={() =>
+                setActiveLowerGuide((prev) => (prev === 'legday' ? null : 'legday'))
+              }
+              className={`rounded-[26px] border p-3 sm:p-4 flex items-center justify-between gap-2 sm:gap-3 text-left transition-all cursor-pointer ${
+                activeLowerGuide === 'legday'
+                  ? 'bg-[#F1E2EA] border-[#EC4899]/50 shadow-2xs'
+                  : 'bg-[#F6EDF2] border-[#FBCFE8] hover:bg-[#F1E2EA]'
+              }`}
+            >
+              <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+                <div className="w-9 h-9 sm:w-11 sm:h-11 rounded-2xl bg-white shadow-2xs flex items-center justify-center text-[#831843] shrink-0">
+                  <StreamlineIcon name="weightlifter" className="w-4 h-4 sm:w-5 sm:h-5 text-[#EC4899]" />
+                </div>
+                <div className="min-w-0">
+                  <span className="font-compact text-[9px] sm:text-[10px] font-extrabold uppercase tracking-wider text-[#EC4899] block truncate">
+                    Guide intégré · Bas du corps
+                  </span>
+                  <h2 className="font-display font-bold text-xs sm:text-sm text-[#2B091C] leading-snug line-clamp-2">
+                    Comment structurer son leg day ?
+                  </h2>
+                </div>
+              </div>
+              <span className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-white text-[#831843] flex items-center justify-center shrink-0 shadow-2xs">
+                {activeLowerGuide === 'legday' ? (
+                  <ChevronUp className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                ) : (
+                  <ChevronDown className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                )}
+              </span>
+            </button>
+
+            {/* Guide 2 : Guide Biomécanique Presse à cuisses 45° */}
+            <button
+              type="button"
+              onClick={() =>
+                setActiveLowerGuide((prev) => (prev === 'legpress' ? null : 'legpress'))
+              }
+              className={`rounded-[26px] border p-3 sm:p-4 flex items-center justify-between gap-2 sm:gap-3 text-left transition-all cursor-pointer ${
+                activeLowerGuide === 'legpress'
+                  ? 'bg-[#F1E2EA] border-[#EC4899]/50 shadow-2xs'
+                  : 'bg-[#F6EDF2] border-[#FBCFE8] hover:bg-[#F1E2EA]'
+              }`}
+            >
+              <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+                <div className="w-9 h-9 sm:w-11 sm:h-11 rounded-2xl bg-white shadow-2xs flex items-center justify-center text-[#831843] shrink-0">
+                  <StreamlineIcon name="kettlebell" className="w-4 h-4 sm:w-5 sm:h-5 text-[#EC4899]" />
+                </div>
+                <div className="min-w-0">
+                  <span className="font-compact text-[9px] sm:text-[10px] font-extrabold uppercase tracking-wider text-[#EC4899] block truncate">
+                    Guide intégré · Bas du corps
+                  </span>
+                  <h2 className="font-display font-bold text-xs sm:text-sm text-[#2B091C] leading-snug line-clamp-2">
+                    Guide Presse à cuisses 45°
+                  </h2>
+                </div>
+              </div>
+              <span className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-white text-[#831843] flex items-center justify-center shrink-0 shadow-2xs">
+                {activeLowerGuide === 'legpress' ? (
+                  <ChevronUp className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                ) : (
+                  <ChevronDown className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                )}
+              </span>
+            </button>
+          </div>
+
+          {/* Contenu déplié en pleine largeur sous la ligne des 2 guides */}
+          {activeLowerGuide === 'legday' && (
+            <div className="rounded-[26px] bg-[#F6EDF2] border border-[#FBCFE8] p-4 animate-in fade-in duration-150">
+              <LegDayStructureContent />
+            </div>
+          )}
+
+          {activeLowerGuide === 'legpress' && (
+            <div className="rounded-[26px] bg-[#F6EDF2] border border-[#FBCFE8] p-4 animate-in fade-in duration-150">
+              <LegPressGuideContent
+                selectedPlacement={selectedFootPlacement}
+                onSelectPlacement={setSelectedFootPlacement}
+              />
+            </div>
+          )}
+        </div>
       )}
 
       {/* 4. Clean Soft List Cards */}
@@ -275,6 +367,8 @@ export const ExercisesView: React.FC<ExercisesViewProps> = ({
                         {prev ? `${prev.weight} kg` : `${ex.defaultSets}×${ex.defaultReps}`}
                       </span>
                     </div>
+
+                    <PersonalGearReminder exercise={ex} variant="pill-list" className="pt-0.5" />
                   </div>
                 </div>
 

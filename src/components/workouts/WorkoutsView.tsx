@@ -25,6 +25,7 @@ import {
 import { WorkoutGeneratorModal } from './WorkoutGeneratorModal';
 import { WorkoutEditorModal } from './WorkoutEditorModal';
 import { WarmupAndStretchingGuide } from './WarmupAndStretchingGuide';
+import { PersonalGearReminder } from '../common/PersonalGearReminder';
 import { StreamlineIcon, StreamlineIconName } from '../ui/StreamlineIcon';
 import { BottomSheet } from '../ui/BottomSheet';
 
@@ -570,6 +571,7 @@ export const WorkoutsView: React.FC<WorkoutsViewProps> = ({ onStartActiveMode })
                         <span>·</span>
                         <span>{totalSets} séries</span>
                       </div>
+                      <PersonalGearReminder exercises={routine.exercises} variant="pill-list" className="pt-0.5" />
                     </div>
                   </div>
 

@@ -11,7 +11,6 @@ import { ActiveWorkoutView } from './components/workouts/ActiveWorkoutView';
 import { PlanningView } from './components/planning/PlanningView';
 import { ProgressView } from './components/progress/ProgressView';
 import { MeasurementsView } from './components/measurements/MeasurementsView';
-import { RunningView } from './components/running/RunningView';
 import { ProfileModal } from './components/profile/ProfileModal';
 import { AuthModal } from './components/auth/AuthModal';
 import { LandingPage } from './components/landing/LandingPage';
@@ -162,8 +161,6 @@ const AuthenticatedApp: React.FC = () => {
                 onExit={() => setCurrentTab('home')}
               />
             )}
-
-            {currentTab === 'running' && <RunningView />}
 
             {currentTab === 'planning' && (
               <PlanningView onStartActiveMode={handleStartActiveMode} />

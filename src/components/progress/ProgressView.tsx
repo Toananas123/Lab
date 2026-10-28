@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   RotateCcw,
   Trash2,
@@ -8,6 +8,8 @@ import {
   ChevronRight,
   ChevronDown,
   Search,
+  Check,
+  Target,
 } from 'lucide-react';
 import { useWorkout } from '../../context/WorkoutContext';
 import {
@@ -21,6 +23,20 @@ import { BottomSheet } from '../ui/BottomSheet';
 interface ProgressViewProps {
   onOpenMeasurements?: () => void;
 }
+
+interface SuiviObjectiveItem {
+  id: string;
+  label: string;
+  completed: boolean;
+}
+
+const DEFAULT_SUIVI_OBJECTIVES: SuiviObjectiveItem[] = [
+  { id: 'obj-1', label: 'Réaliser mes 3 séances complètes de la semaine', completed: false },
+  { id: 'obj-2', label: 'Augmenter ma charge sur 1 exercice bas du corps', completed: false },
+  { id: 'obj-3', label: 'Valider mon finisher cardio ou abdos en fin de séance', completed: false },
+];
+
+const SUIVI_OBJECTIVES_STORAGE_KEY = 'glowup_suivi_objectives_v1';
 
 type SuiviSubTab = 'overview' | 'loads' | 'body' | 'history';
 type TimeRange = '7d' | '30d' | '90d' | 'all';
@@ -51,6 +67,55 @@ export const ProgressView: React.FC<ProgressViewProps> = () => {
 
   const [subTab, setSubTab] = useState<SuiviSubTab>('overview');
   const [timeRange, setTimeRange] = useState<TimeRange>('all');
+
+  // 3-item checkable Objectives encart state
+  const [objectives, setObjectives] = useState<SuiviObjectiveItem[]>(() => {
+    try {
+      const saved = localStorage.getItem(SUIVI_OBJECTIVES_STORAGE_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length === 3) {
+          return parsed;
+        }
+      }
+    } catch {
+      // Fallback to default
+    }
+    return DEFAULT_SUIVI_OBJECTIVES;
+  });
+  const [editingObjectiveId, setEditingObjectiveId] = useState<string | null>(null);
+  const [editingObjectiveText, setEditingObjectiveText] = useState<string>('');
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(SUIVI_OBJECTIVES_STORAGE_KEY, JSON.stringify(objectives));
+    } catch {
+      // Ignore storage errors
+    }
+  }, [objectives]);
+
+  const toggleObjective = (id: string) => {
+    setObjectives((prev) =>
+      prev.map((item) =>
+        item.id === id ? { ...item, completed: !item.completed } : item
+      )
+    );
+  };
+
+  const startEditObjective = (item: SuiviObjectiveItem) => {
+    setEditingObjectiveId(item.id);
+    setEditingObjectiveText(item.label);
+  };
+
+  const saveEditObjective = (id: string) => {
+    const trimmed = editingObjectiveText.trim();
+    if (trimmed) {
+      setObjectives((prev) =>
+        prev.map((item) => (item.id === id ? { ...item, label: trimmed } : item))
+      );
+    }
+    setEditingObjectiveId(null);
+  };
 
   // Loads & PRs state
   const [selectedExerciseId, setSelectedExerciseId] = useState<string>('');
@@ -758,6 +823,101 @@ export const ProgressView: React.FC<ProgressViewProps> = () => {
                   </div>
                 </div>
               ))}
+            </div>
+          </div>
+
+          {/* Encart Objectifs (même teinte bg-grainy-pink que Suivi morphologique & Courbe de surcharge progressive, sous Équilibre d'entraînement) */}
+          <div className="p-5 rounded-[28px] bg-grainy-pink space-y-3.5">
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <div className="w-9 h-9 rounded-2xl bg-white text-[#831843] flex items-center justify-center shrink-0 shadow-2xs">
+                  <Target className="w-4 h-4 text-[#EC4899]" />
+                </div>
+                <div className="min-w-0">
+                  <span className="font-compact text-[10px] font-semibold uppercase tracking-wider text-[#831843] block">
+                    Focus personnel
+                  </span>
+                  <h2 className="font-display font-bold text-base text-[#2B091C] truncate">
+                    Mes objectifs
+                  </h2>
+                </div>
+              </div>
+
+              <span className="px-3 py-1 rounded-full bg-white text-[#831843] font-mono text-xs font-bold shrink-0 shadow-2xs">
+                {objectives.filter((o) => o.completed).length}/3
+              </span>
+            </div>
+
+            <div className="space-y-2">
+              {objectives.map((item) => {
+                const isEditing = editingObjectiveId === item.id;
+                return (
+                  <div
+                    key={item.id}
+                    className={`p-3 rounded-2xl transition-all flex items-center justify-between gap-2.5 ${
+                      item.completed
+                        ? 'bg-white/60 text-[#831843]'
+                        : 'bg-white/85 text-[#2B091C] hover:bg-white'
+                    }`}
+                  >
+                    {isEditing ? (
+                      <div className="flex items-center gap-2 flex-1 min-w-0">
+                        <input
+                          type="text"
+                          value={editingObjectiveText}
+                          onChange={(e) => setEditingObjectiveText(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') saveEditObjective(item.id);
+                          }}
+                          autoFocus
+                          className="flex-1 min-w-0 px-2.5 py-1 rounded-xl bg-white border border-[#FBCFE8] text-xs font-semibold text-[#2B091C] focus:outline-none"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => saveEditObjective(item.id)}
+                          className="px-2.5 py-1 rounded-xl bg-[#831843] text-white text-[11px] font-bold shrink-0 cursor-pointer"
+                        >
+                          OK
+                        </button>
+                      </div>
+                    ) : (
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => toggleObjective(item.id)}
+                          className="flex items-center gap-3 flex-1 min-w-0 text-left cursor-pointer"
+                        >
+                          <span
+                            className={`w-5 h-5 rounded-lg flex items-center justify-center shrink-0 transition-all ${
+                              item.completed
+                                ? 'bg-[#831843] text-white shadow-2xs'
+                                : 'bg-[#F6EDF2] border-2 border-[#F472B6] text-transparent'
+                            }`}
+                          >
+                            <Check className="w-3.5 h-3.5 stroke-[3]" />
+                          </span>
+                          <span
+                            className={`text-xs sm:text-sm font-semibold leading-snug transition-all ${
+                              item.completed ? 'line-through opacity-65' : ''
+                            }`}
+                          >
+                            {item.label}
+                          </span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => startEditObjective(item)}
+                          className="w-7 h-7 rounded-full hover:bg-[#F6EDF2] text-[#7A616F] hover:text-[#831843] flex items-center justify-center shrink-0 transition-colors cursor-pointer"
+                          title="Modifier cet objectif"
+                        >
+                          <Edit3 className="w-3.5 h-3.5" />
+                        </button>
+                      </>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           </div>
         </div>

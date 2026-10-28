@@ -5,6 +5,8 @@ import { useWorkout } from '../../context/WorkoutContext';
 import { CARDIO_CIRCUITS, ABDOS_CIRCUITS, WARMUP_COOLDOWN_GUIDES } from '../../data/exercisesData';
 import { StreamlineIcon, StreamlineIconName } from '../ui/StreamlineIcon';
 import { BottomSheet } from '../ui/BottomSheet';
+import { PersonalGearReminder } from '../common/PersonalGearReminder';
+import { buildStructuredLegWorkout, LEG_DAY_PHASES } from '../../utils/legDayPhases';
 
 interface WorkoutGeneratorModalProps {
   isOpen: boolean;
@@ -101,63 +103,75 @@ export const WorkoutGeneratorModal: React.FC<WorkoutGeneratorModalProps> = ({
       return;
     }
 
-    let pool: Exercise[] = [];
-    let name = '';
-    let defaultFinisher = '';
+    const isLower = zoneId === 'glutes' || zoneId === 'lower' || zoneId === 'posterior' || zoneId === 'quads_adductors';
 
-    if (zoneId === 'glutes') {
-      name = 'Glow Glutes Focus (Fessiers)';
-      defaultFinisher = 'Abduction machine en drop-set (3 x 20 reps)';
-      pool = allExercises.filter((ex) => ex.specificMuscle === 'fessiers' || ex.category === 'lower-body');
-    } else if (zoneId === 'lower') {
-      name = 'Bas du Corps Complet (Jambes Fermes)';
-      defaultFinisher = 'Leg Extension tempo brûlure (2 x 15 reps)';
-      pool = allExercises.filter((ex) => ex.category === 'lower-body');
-    } else if (zoneId === 'posterior') {
-      name = 'Chaîne Postérieure (Fessiers & Ischios)';
-      defaultFinisher = 'Hyperextensions au banc 45° (3 x 15 reps)';
-      pool = allExercises.filter(
-        (ex) => ex.specificMuscle === 'fessiers' || ex.specificMuscle === 'ischios' || ex.specificMuscle === 'lombaires'
-      );
-    } else if (zoneId === 'quads_adductors') {
-      name = 'Quads Sculpt & Adducteurs Fermes';
-      defaultFinisher = 'Goblet Squat tempo lent (2 x 15 reps)';
-      pool = allExercises.filter((ex) => ex.specificMuscle === 'quadriceps' || ex.specificMuscle === 'adducteurs');
-    } else if (zoneId === 'back') {
-      name = 'Dos & Silhouette V-Shape';
-      defaultFinisher = 'Face Pulls corde en brûlure (3 x 15 reps)';
-      pool = allExercises.filter((ex) => ex.category === 'back');
-    } else if (zoneId === 'back_thick') {
-      name = 'Dos Épais & Posture Altière';
-      defaultFinisher = 'Pull-over à la corde (3 x 15 reps)';
-      pool = allExercises.filter(
-        (ex) => ex.specificMuscle === 'milieu-dos' || ex.specificMuscle === 'grand-dorsal' || ex.specificMuscle === 'trapezes-arriere-epaule'
-      );
-    } else if (zoneId === 'arms') {
-      name = 'Épaules Galbées & Bras Toniques';
-      defaultFinisher = 'Extensions triceps à la corde (3 x 15 reps)';
-      pool = allExercises.filter((ex) => ex.category === 'arms');
-    } else if (zoneId === 'fullbody') {
-      name = 'Full Body Glow & Tonification Totale';
-      defaultFinisher = '60 secondes de planche active ou 5 min de marche en côte';
-      const fessier = allExercises.find((e) => e.specificMuscle === 'fessiers') || allExercises[0];
-      const dos = allExercises.find((e) => e.specificMuscle === 'grand-dorsal') || allExercises[1];
-      const epaule = allExercises.find((e) => e.specificMuscle === 'epaule-cote') || allExercises[2];
-      const core = allExercises.find((e) => e.specificMuscle === 'abdos') || allExercises[3];
-      pool = [fessier, dos, epaule, core].filter(Boolean) as Exercise[];
+    let workoutName = '';
+    let defaultFinisher = '';
+    let selectedWithMeta: { exercise: Exercise; phaseTag?: string }[] = [];
+
+    if (isLower) {
+      if (zoneId === 'glutes') {
+        workoutName = 'Glow Glutes Focus (Fessiers)';
+        defaultFinisher = 'Abduction machine en drop-set (3 x 20 reps)';
+      } else if (zoneId === 'lower') {
+        workoutName = 'Bas du Corps Complet (Jambes Fermes)';
+        defaultFinisher = 'Leg Extension tempo brûlure (2 x 15 reps)';
+      } else if (zoneId === 'posterior') {
+        workoutName = 'Chaîne Postérieure (Fessiers & Ischios)';
+        defaultFinisher = 'Hyperextensions au banc 45° (3 x 15 reps)';
+      } else if (zoneId === 'quads_adductors') {
+        workoutName = 'Quads Sculpt & Adducteurs Fermes';
+        defaultFinisher = 'Goblet Squat tempo lent (2 x 15 reps)';
+      }
+
+      const structuredItems = buildStructuredLegWorkout(allExercises, favorites, zoneId);
+      selectedWithMeta = structuredItems.map((item) => {
+        const meta = LEG_DAY_PHASES.find((p) => p.id === item.phase);
+        return {
+          exercise: item.exercise,
+          phaseTag: meta ? `Phase ${meta.id} · ${meta.name}` : undefined,
+        };
+      });
+    } else {
+      let pool: Exercise[] = [];
+
+      if (zoneId === 'back') {
+        workoutName = 'Dos & Silhouette V-Shape';
+        defaultFinisher = 'Face Pulls corde en brûlure (3 x 15 reps)';
+        pool = allExercises.filter((ex) => ex.category === 'back');
+      } else if (zoneId === 'back_thick') {
+        workoutName = 'Dos Épais & Posture Altière';
+        defaultFinisher = 'Pull-over à la corde (3 x 15 reps)';
+        pool = allExercises.filter(
+          (ex) => ex.specificMuscle === 'milieu-dos' || ex.specificMuscle === 'grand-dorsal' || ex.specificMuscle === 'trapezes-arriere-epaule'
+        );
+      } else if (zoneId === 'arms') {
+        workoutName = 'Épaules Galbées & Bras Toniques';
+        defaultFinisher = 'Extensions triceps à la corde (3 x 15 reps)';
+        pool = allExercises.filter((ex) => ex.category === 'arms');
+      } else if (zoneId === 'fullbody') {
+        workoutName = 'Full Body Glow & Tonification Totale';
+        defaultFinisher = '60 secondes de planche active ou 5 min de marche en côte';
+        const fessier = allExercises.find((e) => e.specificMuscle === 'fessiers') || allExercises[0];
+        const dos = allExercises.find((e) => e.specificMuscle === 'grand-dorsal') || allExercises[1];
+        const epaule = allExercises.find((e) => e.specificMuscle === 'epaule-cote') || allExercises[2];
+        const core = allExercises.find((e) => e.specificMuscle === 'abdos') || allExercises[3];
+        pool = [fessier, dos, epaule, core].filter(Boolean) as Exercise[];
+      }
+
+      const sorted = [...pool].sort((a, b) => {
+        const aFav = favorites.includes(a.id);
+        const bFav = favorites.includes(b.id);
+        if (aFav && !bFav) return Math.random() < 0.67 ? -1 : 1;
+        if (!aFav && bFav) return Math.random() < 0.67 ? 1 : -1;
+        return 0.5 - Math.random();
+      });
+
+      selectedWithMeta = sorted.slice(0, 4).map((ex) => ({ exercise: ex }));
     }
 
-    const sorted = [...pool].sort((a, b) => {
-      const aFav = favorites.includes(a.id);
-      const bFav = favorites.includes(b.id);
-      if (aFav && !bFav) return Math.random() < 0.67 ? -1 : 1;
-      if (!aFav && bFav) return Math.random() < 0.67 ? 1 : -1;
-      return 0.5 - Math.random();
-    });
-
-    const selected = sorted.slice(0, 4);
-
-    const exerciseItems: WorkoutExerciseItem[] = selected.map((ex, idx) => {
+    const exerciseItems: WorkoutExerciseItem[] = selectedWithMeta.map((item, idx) => {
+      const ex = item.exercise;
       const prev = getPreviousPerformance(ex.id);
       const targetWeight = prev ? prev.weight : ex.equipment === 'dumbbell' ? 6 : ex.equipment === 'barbell' ? 30 : 20;
       const setsCount = ex.defaultSets || 3;
@@ -178,12 +192,13 @@ export const WorkoutGeneratorModal: React.FC<WorkoutGeneratorModalProps> = ({
         equipment: ex.equipment,
         restSeconds: ex.defaultRestSeconds || 60,
         sets,
+        notes: item.phaseTag,
       };
     });
 
     setGeneratedExercises(exerciseItems);
     setFinisher(defaultFinisher);
-    setGeneratedName(name);
+    setGeneratedName(workoutName);
     setStep('review');
   };
 
@@ -401,6 +416,9 @@ export const WorkoutGeneratorModal: React.FC<WorkoutGeneratorModalProps> = ({
             )}
           </div>
 
+          {/* Matériel personnel à prévoir avant de commencer */}
+          <PersonalGearReminder exercises={generatedExercises} variant="banner" />
+
           {/* Warm-up & Cooldown Collapsible Guide */}
           {currentWarmupGuide && (
             <div className="rounded-2xl bg-[#F6EDF2] overflow-hidden">
@@ -449,10 +467,17 @@ export const WorkoutGeneratorModal: React.FC<WorkoutGeneratorModalProps> = ({
                   <span className="font-display font-bold text-xs text-[#2B091C] block truncate">
                     {idx + 1}. {ex.exerciseName}
                   </span>
-                  <span className="text-[11px] text-[#7A616F]">
-                    {ex.sets.length} {ex.sets.length > 1 ? 'séries' : 'bloc'}
-                    {ex.restSeconds > 0 ? ` · Repos ${ex.restSeconds}s` : ''}
-                  </span>
+                  <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                    <span className="text-[11px] text-[#7A616F]">
+                      {ex.sets.length} {ex.sets.length > 1 ? 'séries' : 'bloc'}
+                      {ex.restSeconds > 0 ? ` · Repos ${ex.restSeconds}s` : ''}
+                    </span>
+                    {ex.notes && ex.notes.startsWith('Phase') && (
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#FCE7F3] text-[#831843]">
+                        {ex.notes}
+                      </span>
+                    )}
+                  </div>
                 </div>
                 <span className="font-mono font-bold text-[#831843] text-xs shrink-0 bg-white px-2.5 py-1 rounded-full">
                   {ex.sets[0]?.targetWeight ? `${ex.sets[0].targetWeight} kg` : 'PDC'}

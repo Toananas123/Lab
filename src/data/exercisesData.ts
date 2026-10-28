@@ -1741,13 +1741,26 @@ export const STARTER_ROUTINES: Routine[] = [
     id: 'routine-glutes-focus',
     name: 'Booty Sculpt & Hypertrophie (Fessiers)',
     targetZone: 'lower-body',
-    description: 'Séance reine axée sur la tension mécanique et l’hypertrophie des fessiers.',
+    description: 'Séance reine 4 exercices axée sur la tension mécanique et l’hypertrophie des fessiers (Étirement → Contraction → Unilatéral → Isolation).',
     isDefault: true,
     finisher: 'Abduction machine en drop-set (3 x 20 reps)',
     notes: 'Priorisez la contraction volontaire en haut de chaque répétition.',
     exercises: [
       {
         id: 'r-ex-1',
+        exerciseId: 'romanian-deadlift',
+        exerciseName: 'Soulevé de terre roumain (RDL aux haltères)',
+        category: 'lower-body',
+        equipment: 'dumbbell',
+        restSeconds: 90,
+        sets: [
+          { id: 's1', setNumber: 1, targetReps: 12, targetWeight: 14, completed: false },
+          { id: 's2', setNumber: 2, targetReps: 10, targetWeight: 16, completed: false },
+          { id: 's3', setNumber: 3, targetReps: 10, targetWeight: 16, completed: false },
+        ]
+      },
+      {
+        id: 'r-ex-2',
         exerciseId: 'hip-thrust-barbell',
         exerciseName: 'Hip Thrust à la barre',
         category: 'lower-body',
@@ -1761,7 +1774,7 @@ export const STARTER_ROUTINES: Routine[] = [
         ]
       },
       {
-        id: 'r-ex-2',
+        id: 'r-ex-3',
         exerciseId: 'bulgarian-split-squat',
         exerciseName: 'Fentes bulgares aux haltères',
         category: 'lower-body',
@@ -1774,7 +1787,7 @@ export const STARTER_ROUTINES: Routine[] = [
         ]
       },
       {
-        id: 'r-ex-3',
+        id: 'r-ex-4',
         exerciseId: 'cable-glute-kickback',
         exerciseName: 'Kickback fessier à la poulie basse',
         category: 'lower-body',
@@ -1785,19 +1798,6 @@ export const STARTER_ROUTINES: Routine[] = [
           { id: 's2', setNumber: 2, targetReps: 12, targetWeight: 12.5, completed: false },
           { id: 's3', setNumber: 3, targetReps: 12, targetWeight: 12.5, completed: false },
         ]
-      },
-      {
-        id: 'r-ex-4',
-        exerciseId: 'hip-abduction-machine',
-        exerciseName: 'Abduction assise à la machine',
-        category: 'lower-body',
-        equipment: 'machine',
-        restSeconds: 60,
-        sets: [
-          { id: 's1', setNumber: 1, targetReps: 20, targetWeight: 40, completed: false },
-          { id: 's2', setNumber: 2, targetReps: 15, targetWeight: 45, completed: false },
-          { id: 's3', setNumber: 3, targetReps: 15, targetWeight: 45, completed: false },
-        ]
       }
     ]
   },
@@ -1805,7 +1805,7 @@ export const STARTER_ROUTINES: Routine[] = [
     id: 'routine-quads-glutes',
     name: 'Bas du Corps Complet (Quads, Fessiers & Ischios)',
     targetZone: 'lower-body',
-    description: 'Équilibre parfait face avant et face arrière pour des jambes fuselées et toniques.',
+    description: 'Équilibre parfait face avant et face arrière pour des jambes fuselées et toniques (Étirement → Contraction → Unilatéral → Isolation).',
     isDefault: true,
     finisher: 'Leg Extension tempo brûlure (2 x 15 reps)',
     notes: 'Pensez à garder le dos plaqué à la presse et au hack squat.',
@@ -1824,33 +1824,33 @@ export const STARTER_ROUTINES: Routine[] = [
         ]
       },
       {
-        id: 'r-ex-q2',
-        exerciseId: 'romanian-deadlift',
-        exerciseName: 'Soulevé de terre roumain (RDL aux haltères)',
+        id: 'r-ex-q3',
+        exerciseId: 'kas-glute-bridge',
+        exerciseName: 'Kas Glute Bridge aux haltères',
         category: 'lower-body',
         equipment: 'dumbbell',
-        restSeconds: 90,
+        restSeconds: 75,
         sets: [
-          { id: 's1', setNumber: 1, targetReps: 12, targetWeight: 14, completed: false },
-          { id: 's2', setNumber: 2, targetReps: 10, targetWeight: 16, completed: false },
-          { id: 's3', setNumber: 3, targetReps: 10, targetWeight: 16, completed: false },
-        ]
-      },
-      {
-        id: 'r-ex-q3',
-        exerciseId: 'hack-squat-machine',
-        exerciseName: 'Hack Squat guidé',
-        category: 'lower-body',
-        equipment: 'machine',
-        restSeconds: 90,
-        sets: [
-          { id: 's1', setNumber: 1, targetReps: 10, targetWeight: 40, completed: false },
-          { id: 's2', setNumber: 2, targetReps: 10, targetWeight: 45, completed: false },
-          { id: 's3', setNumber: 3, targetReps: 8, targetWeight: 50, completed: false },
+          { id: 's1', setNumber: 1, targetReps: 12, targetWeight: 18, completed: false },
+          { id: 's2', setNumber: 2, targetReps: 12, targetWeight: 20, completed: false },
+          { id: 's3', setNumber: 3, targetReps: 10, targetWeight: 20, completed: false },
         ]
       },
       {
         id: 'r-ex-q4',
+        exerciseId: 'single-leg-press',
+        exerciseName: 'Presse à cuisses unilatérale (Single Leg Press)',
+        category: 'lower-body',
+        equipment: 'machine',
+        restSeconds: 75,
+        sets: [
+          { id: 's1', setNumber: 1, targetReps: 10, targetWeight: 35, completed: false },
+          { id: 's2', setNumber: 2, targetReps: 10, targetWeight: 40, completed: false },
+          { id: 's3', setNumber: 3, targetReps: 10, targetWeight: 40, completed: false },
+        ]
+      },
+      {
+        id: 'r-ex-q5',
         exerciseId: 'lying-leg-curl',
         exerciseName: 'Leg Curl allongé à la machine',
         category: 'lower-body',
@@ -2058,7 +2058,7 @@ export const STARTER_ROUTINES: Routine[] = [
     id: 'routine-posterior-chain',
     name: 'Chaîne Postérieure (Fessiers & Ischios)',
     targetZone: 'lower-body',
-    description: 'Focus exclusif sur l’arrière de la cuisse et le galbe fessier sans quadriceps.',
+    description: 'Séance 4 exercices axée sur la chaîne postérieure (Étirement → Contraction → Unilatéral → Isolation).',
     isDefault: true,
     finisher: 'Hyperextensions au banc 45° focus fessiers (3 x 15)',
     notes: 'Poussez bien les hanches en arrière sur le soulevé de terre roumain.',
@@ -2091,6 +2091,19 @@ export const STARTER_ROUTINES: Routine[] = [
       },
       {
         id: 'r-ex-p3',
+        exerciseId: 'single-leg-rdl-dumbbell',
+        exerciseName: 'RDL unijambiste avec haltère (Single Leg RDL)',
+        category: 'lower-body',
+        equipment: 'dumbbell',
+        restSeconds: 60,
+        sets: [
+          { id: 's1', setNumber: 1, targetReps: 10, targetWeight: 8, completed: false },
+          { id: 's2', setNumber: 2, targetReps: 10, targetWeight: 10, completed: false },
+          { id: 's3', setNumber: 3, targetReps: 10, targetWeight: 10, completed: false },
+        ]
+      },
+      {
+        id: 'r-ex-p4',
         exerciseId: 'seated-leg-curl',
         exerciseName: 'Leg Curl assis à la machine',
         category: 'lower-body',
@@ -2101,19 +2114,6 @@ export const STARTER_ROUTINES: Routine[] = [
           { id: 's2', setNumber: 2, targetReps: 12, targetWeight: 25, completed: false },
           { id: 's3', setNumber: 3, targetReps: 10, targetWeight: 30, completed: false },
         ]
-      },
-      {
-        id: 'r-ex-p4',
-        exerciseId: 'hyperextensions-bench',
-        exerciseName: 'Banc à lombaires 45° (Hyperextensions)',
-        category: 'back',
-        equipment: 'bodyweight',
-        restSeconds: 60,
-        sets: [
-          { id: 's1', setNumber: 1, targetReps: 15, targetWeight: 0, completed: false },
-          { id: 's2', setNumber: 2, targetReps: 15, targetWeight: 0, completed: false },
-          { id: 's3', setNumber: 3, targetReps: 12, targetWeight: 5, completed: false },
-        ]
       }
     ]
   },
@@ -2121,7 +2121,7 @@ export const STARTER_ROUTINES: Routine[] = [
     id: 'routine-quads-adductors',
     name: 'Quads Sculpt & Adducteurs Fermes',
     targetZone: 'lower-body',
-    description: 'Avant des cuisses et intérieur des jambes sculptés en profondeur.',
+    description: 'Séance 4 exercices sculptant l’avant et l’intérieur des cuisses (Étirement → Contraction → Unilatéral → Isolation).',
     isDefault: true,
     finisher: 'Goblet Squat tempo lent (2 x 15 reps)',
     notes: 'Ouvrez bien les genoux sur les mouvements d’adducteurs.',
@@ -2141,6 +2141,32 @@ export const STARTER_ROUTINES: Routine[] = [
       },
       {
         id: 'r-ex-qa2',
+        exerciseId: 'kas-glute-bridge',
+        exerciseName: 'Kas Glute Bridge aux haltères',
+        category: 'lower-body',
+        equipment: 'dumbbell',
+        restSeconds: 75,
+        sets: [
+          { id: 's1', setNumber: 1, targetReps: 12, targetWeight: 18, completed: false },
+          { id: 's2', setNumber: 2, targetReps: 12, targetWeight: 20, completed: false },
+          { id: 's3', setNumber: 3, targetReps: 10, targetWeight: 20, completed: false },
+        ]
+      },
+      {
+        id: 'r-ex-qa3',
+        exerciseId: 'forward-lunges-dumbbell',
+        exerciseName: 'Fente avant avec haltères',
+        category: 'lower-body',
+        equipment: 'dumbbell',
+        restSeconds: 60,
+        sets: [
+          { id: 's1', setNumber: 1, targetReps: 10, targetWeight: 8, completed: false },
+          { id: 's2', setNumber: 2, targetReps: 10, targetWeight: 10, completed: false },
+          { id: 's3', setNumber: 3, targetReps: 10, targetWeight: 10, completed: false },
+        ]
+      },
+      {
+        id: 'r-ex-qa4',
         exerciseId: 'adductor-machine',
         exerciseName: 'Machine à adducteurs assise',
         category: 'lower-body',
@@ -2150,32 +2176,6 @@ export const STARTER_ROUTINES: Routine[] = [
           { id: 's1', setNumber: 1, targetReps: 20, targetWeight: 35, completed: false },
           { id: 's2', setNumber: 2, targetReps: 15, targetWeight: 40, completed: false },
           { id: 's3', setNumber: 3, targetReps: 15, targetWeight: 40, completed: false },
-        ]
-      },
-      {
-        id: 'r-ex-qa3',
-        exerciseId: 'leg-extension-machine',
-        exerciseName: 'Leg Extension assis à la machine',
-        category: 'lower-body',
-        equipment: 'machine',
-        restSeconds: 60,
-        sets: [
-          { id: 's1', setNumber: 1, targetReps: 15, targetWeight: 25, completed: false },
-          { id: 's2', setNumber: 2, targetReps: 12, targetWeight: 30, completed: false },
-          { id: 's3', setNumber: 3, targetReps: 12, targetWeight: 30, completed: false },
-        ]
-      },
-      {
-        id: 'r-ex-qa4',
-        exerciseId: 'sumo-squat-dumbbell',
-        exerciseName: 'Squat Sumo avec haltère ou kettlebell',
-        category: 'lower-body',
-        equipment: 'dumbbell',
-        restSeconds: 75,
-        sets: [
-          { id: 's1', setNumber: 1, targetReps: 12, targetWeight: 16, completed: false },
-          { id: 's2', setNumber: 2, targetReps: 12, targetWeight: 18, completed: false },
-          { id: 's3', setNumber: 3, targetReps: 10, targetWeight: 20, completed: false },
         ]
       }
     ]
