@@ -3,7 +3,7 @@ import { Plus, Music, User as UserIcon, LogOut, X } from 'lucide-react';
 import { StreamlineIcon, StreamlineIconName } from '../ui/StreamlineIcon';
 import { AppLogo } from '../ui/AppLogo';
 
-export type NavTab = 'home' | 'exercises' | 'workouts' | 'planning' | 'progress';
+export type NavTab = 'home' | 'exercises' | 'workouts' | 'planning' | 'progress' | 'social';
 
 interface BottomNavProps {
   activeTab: NavTab;
@@ -37,6 +37,7 @@ export const BottomNav: React.FC<BottomNavProps> = ({
     { id: 'exercises', label: 'Exercices', icon: 'dumbbell' },
     { id: 'planning', label: 'Planning', icon: 'calendar' },
     { id: 'progress', label: 'Suivi', icon: 'heart-pulse' },
+    { id: 'social', label: 'Social', icon: 'user' },
   ];
 
   const allDesktopTabs: { id: NavTab; label: string; icon: StreamlineIconName }[] = [
@@ -45,6 +46,7 @@ export const BottomNav: React.FC<BottomNavProps> = ({
     { id: 'workouts', label: 'Séances', icon: 'weightlifter' },
     { id: 'planning', label: 'Planning', icon: 'calendar' },
     { id: 'progress', label: 'Suivi', icon: 'heart-pulse' },
+    { id: 'social', label: 'Social & Amies', icon: 'user' },
   ];
 
   return (

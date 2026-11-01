@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useWorkout } from '../../context/WorkoutContext';
+import { useSocial } from '../../context/SocialContext';
 import { getDailyAffirmation } from '../../data/affirmations';
 import { MuscleCategory, WeeklyPlanDay, ActivityType } from '../../types/fitness';
 import { WEEK_DAYS_TEMPLATE } from '../planning/PlanningView';
@@ -18,7 +19,7 @@ import {
 } from '../ui/StreamlineIcon';
 
 interface HomeViewProps {
-  onNavigateTab: (tab: 'exercises' | 'workouts' | 'planning' | 'progress') => void;
+  onNavigateTab: (tab: 'exercises' | 'workouts' | 'planning' | 'progress' | 'social') => void;
   onOpenCategory: (cat: MuscleCategory) => void;
   onOpenMeasurements: () => void;
   onStartActiveMode: () => void;
@@ -47,6 +48,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
     workouts,
     measurements,
   } = useWorkout();
+  const { friends } = useSocial();
 
   const completedWorkouts = (workouts || []).filter(
     (w) => w && (w.status === 'completed' || !w.status)
@@ -579,6 +581,52 @@ export const HomeView: React.FC<HomeViewProps> = ({
               <ChevronRight className="w-4 h-4" />
             </span>
           </div>
+        </div>
+      </section>
+
+      {/* 5b. Section "Social & Gym Besties" (Accès rapide au Club, Défis & Plannings) */}
+      <section className="space-y-2.5 pt-1">
+        <div className="flex items-center justify-between px-1">
+          <h2 className="text-base font-display font-bold text-[#2B091C]">
+            Social & Gym Besties
+          </h2>
+          <button
+            onClick={() => onNavigateTab('social')}
+            className="text-xs font-semibold text-[#831843] hover:underline flex items-center gap-1"
+          >
+            <span>Ouvrir le Club</span>
+            <ChevronRight className="w-3.5 h-3.5" />
+          </button>
+        </div>
+
+        <div
+          onClick={() => onNavigateTab('social')}
+          className="p-4 sm:p-5 rounded-[26px] bg-grainy-pink border border-[#F472B6]/35 hover:opacity-95 transition-all cursor-pointer flex items-center justify-between gap-3 active:scale-99"
+        >
+          <div className="flex items-center gap-3.5 min-w-0">
+            <div className="w-12 h-12 rounded-2xl bg-[#831843] text-white shadow-2xs flex items-center justify-center shrink-0">
+              <StreamlineIcon name="user" className="w-5 h-5 text-[#FBCFE8]" />
+            </div>
+            <div className="min-w-0">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="font-display font-bold text-base sm:text-lg text-[#2B091C] leading-none">
+                  Qui s’entraîne aujourd’hui ?
+                </span>
+                <span className="px-2 py-0.5 rounded-full bg-white/85 text-[#831843] text-[10px] font-bold font-compact shrink-0">
+                  {friends.length === 0
+                    ? '0 amie · Inviter'
+                    : `${friends.length} ${friends.length > 1 ? 'amies' : 'amie'}`}
+                </span>
+              </div>
+              <p className="text-xs text-[#5C3A4D] truncate mt-1">
+                Fil d’activité, Duo Streak, comparateur de planning 7j & Story Récap
+              </p>
+            </div>
+          </div>
+
+          <span className="w-8 h-8 rounded-full bg-white flex items-center justify-center text-[#831843] shadow-2xs shrink-0">
+            <ChevronRight className="w-4 h-4" />
+          </span>
         </div>
       </section>
 

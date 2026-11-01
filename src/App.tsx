@@ -11,6 +11,8 @@ import { ActiveWorkoutView } from './components/workouts/ActiveWorkoutView';
 import { PlanningView } from './components/planning/PlanningView';
 import { ProgressView } from './components/progress/ProgressView';
 import { MeasurementsView } from './components/measurements/MeasurementsView';
+import { SocialView } from './components/social/SocialView';
+import { SocialProvider } from './context/SocialContext';
 import { ProfileModal } from './components/profile/ProfileModal';
 import { AuthModal } from './components/auth/AuthModal';
 import { LandingPage } from './components/landing/LandingPage';
@@ -170,6 +172,8 @@ const AuthenticatedApp: React.FC = () => {
               <ProgressView onOpenMeasurements={handleOpenMeasurements} />
             )}
 
+            {currentTab === 'social' && <SocialView />}
+
             {currentTab === 'measurements' && (
               <MeasurementsView onBackToProgress={() => setCurrentTab('progress')} />
             )}
@@ -235,7 +239,9 @@ const AppRoot: React.FC = () => {
 
   return (
     <WorkoutProvider>
-      <AuthenticatedApp />
+      <SocialProvider>
+        <AuthenticatedApp />
+      </SocialProvider>
     </WorkoutProvider>
   );
 };
