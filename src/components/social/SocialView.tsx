@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef } from 'react';
 import {
   UserPlus,
   QrCode,
@@ -19,6 +19,9 @@ import {
   Zap,
   Edit3,
   X,
+  RefreshCw,
+  ArrowDown,
+  Trash2,
 } from 'lucide-react';
 import { useSocial } from '../../context/SocialContext';
 import { useWorkout } from '../../context/WorkoutContext';
@@ -67,9 +70,11 @@ export const SocialView: React.FC = () => {
     pokeFriend,
     createGymDateInvite,
     respondToGymDate,
+    deleteGymDateInvite,
     importSharedRoutine,
     setDuoPartner,
     updateCollectiveChallengeTarget,
+    refreshSocialData,
   } = useSocial();
 
   const currentUid = user?.uid || 'guest';
@@ -77,6 +82,20 @@ export const SocialView: React.FC = () => {
 
   const [subTab, setSubTab] = useState<SocialSubTab>('feed');
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  // Pull-to-refresh & Manual Refresh state
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [pullDistance, setPullDistance] = useState(0);
+  const touchStartYRef = useRef<number | null>(null);
+  const PULL_THRESHOLD = 65;
+
+  // Wizz animation state
+  const [wizzBanner, setWizzBanner] = useState<{ friendName: string; time: string } | null>(null);
+  const [isWizzShaking, setIsWizzShaking] = useState(false);
+
+  // Highlight newly created gym date
+  const [highlightedInviteId, setHighlightedInviteId] = useState<string | null>(null);
+  const gymDatesSectionRef = useRef<HTMLDivElement | null>(null);
 
   // Feed comment inputs
   const [commentInputs, setCommentInputs] = useState<Record<string, string>>({});
@@ -99,6 +118,7 @@ export const SocialView: React.FC = () => {
     friends[0]?.id || ''
   );
   const [inviteFriendId, setInviteFriendId] = useState<string>(friends[0]?.id || '');
+  const [customInviteFriendQuery, setCustomInviteFriendQuery] = useState<string>('');
   const [inviteDayOfWeek, setInviteDayOfWeek] = useState<number>(5);
   const [inviteTimeSlot, setInviteTimeSlot] = useState<string>('18h00');
   const [inviteTheme, setInviteTheme] = useState<string>('Leg Day & Fessiers (4 exos)');
@@ -122,17 +142,69 @@ export const SocialView: React.FC = () => {
 
   const triggerToast = (msg: string) => {
     setToastMessage(msg);
-    setTimeout(() => setToastMessage(null), 3200);
+    setTimeout(() => setToastMessage(null), 3600);
+  };
+
+  const handleRefresh = async () => {
+    if (isRefreshing) return;
+    setIsRefreshing(true);
+    try {
+      await refreshSocialData();
+      await new Promise((r) => setTimeout(r, 450));
+      triggerToast('Fil, amies et invitations actualisés ✓');
+    } finally {
+      setIsRefreshing(false);
+      setPullDistance(0);
+    }
+  };
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    if (window.scrollY <= 10 && !isRefreshing) {
+      touchStartYRef.current = e.touches[0].clientY;
+    } else {
+      touchStartYRef.current = null;
+    }
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (touchStartYRef.current === null || isRefreshing) return;
+    const deltaY = e.touches[0].clientY - touchStartYRef.current;
+    if (deltaY > 0 && window.scrollY <= 10) {
+      const damped = Math.min(110, Math.round(deltaY * 0.5));
+      setPullDistance(damped);
+    } else {
+      setPullDistance(0);
+    }
+  };
+
+  const handleTouchEnd = () => {
+    if (touchStartYRef.current === null) return;
+    touchStartYRef.current = null;
+    if (pullDistance >= PULL_THRESHOLD) {
+      handleRefresh();
+    } else {
+      setPullDistance(0);
+    }
+  };
+
+  const handleTriggerWizz = (friend: FriendProfile) => {
+    const res = pokeFriend(friend.id);
+    const friendName = res?.friendName || friend.displayName;
+    const time = res?.time || new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+
+    setIsWizzShaking(true);
+    setWizzBanner({ friendName, time });
+    triggerToast(
+      `⚡ WIZZ envoyé à ${friendName} ! Retrouve son retour dans le Fil & Activité.`
+    );
+
+    setTimeout(() => setIsWizzShaking(false), 700);
+    setTimeout(() => setWizzBanner(null), 4500);
   };
 
   const pendingIncomingRequests = useMemo(
     () => friendRequests.filter((r) => r.status === 'pending' && r.direction === 'incoming'),
     [friendRequests]
-  );
-
-  const pendingGymDates = useMemo(
-    () => gymDates.filter((d) => d.status === 'pending'),
-    [gymDates]
   );
 
   const comparedFriend = useMemo(
@@ -252,19 +324,68 @@ export const SocialView: React.FC = () => {
       6: 'Samedi',
       0: 'Dimanche',
     };
-    createGymDateInvite({
-      friendId: inviteFriendId,
+    const created = createGymDateInvite({
+      friendId: inviteFriendId || friends[0]?.id || '',
+      customFriendQuery: customInviteFriendQuery,
       dayOfWeek: inviteDayOfWeek,
       dayLabel: dayNames[inviteDayOfWeek] || 'Vendredi',
       timeSlot: inviteTimeSlot,
       workoutTheme: inviteTheme,
       locationNote: inviteNote,
     });
-    triggerToast('Invitation « On s’entraîne ensemble ? » envoyée !');
+
+    if (!created) {
+      triggerToast('Entre le @pseudo d’une amie ou ajoute une Gym Bestie pour envoyer l’invitation !');
+      return;
+    }
+
+    setCustomInviteFriendQuery('');
+    setHighlightedInviteId(created.id);
+    triggerToast(
+      `📅 Invitation envoyée à ${created.friendName} (${created.dayLabel} à ${created.timeSlot}) ! Visible dans « Séances communes programmées » et dans le Fil.`
+    );
+    setTimeout(() => {
+      gymDatesSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }, 100);
+    setTimeout(() => setHighlightedInviteId(null), 5000);
   };
 
   return (
-    <div className="space-y-5 animate-in fade-in duration-150">
+    <div
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
+      className={`space-y-5 animate-in fade-in duration-150 transition-transform ${
+        isWizzShaking ? 'translate-x-1 -translate-y-0.5' : ''
+      }`}
+    >
+      {/* Pull-to-refresh visual indicator (glisser vers le bas et relâcher) */}
+      {(pullDistance > 0 || isRefreshing) && (
+        <div
+          className="overflow-hidden transition-all duration-200 flex items-center justify-center"
+          style={{ height: isRefreshing ? 52 : pullDistance }}
+        >
+          <div className="px-4 py-2 rounded-full bg-[#FCE7F3] border border-[#F472B6]/40 text-[#831843] text-xs font-bold flex items-center gap-2 shadow-2xs">
+            {isRefreshing ? (
+              <>
+                <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                <span>Actualisation du Club en cours...</span>
+              </>
+            ) : pullDistance >= PULL_THRESHOLD ? (
+              <>
+                <RefreshCw className="w-3.5 h-3.5 rotate-180 transition-transform" />
+                <span>Relâche pour actualiser ↑</span>
+              </>
+            ) : (
+              <>
+                <ArrowDown className="w-3.5 h-3.5" />
+                <span>Glisse vers le bas pour actualiser ↓</span>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Editorial Header */}
       <div className="pt-1 flex flex-col sm:flex-row sm:items-end justify-between gap-3">
         <div>
@@ -276,8 +397,19 @@ export const SocialView: React.FC = () => {
           </h1>
         </div>
 
-        {/* Quick top actions: Story Recap (#20) + QR Code (#3) + Privacy Badge (#5) */}
+        {/* Quick top actions: Refresh + Privacy Badge (#5) + QR Code (#3) + Story Recap (#20) */}
         <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={handleRefresh}
+            disabled={isRefreshing}
+            className="px-3 py-2 rounded-full bg-[#FCE7F3] hover:bg-[#FBCFE8] text-[#831843] text-xs font-bold flex items-center gap-1.5 transition-all active:scale-95 cursor-pointer disabled:opacity-60"
+            title="Actualiser le fil, les amies et les invitations (ou glisser vers le bas)"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin' : ''}`} />
+            <span>{isRefreshing ? 'Actualisation...' : 'Actualiser'}</span>
+          </button>
+
           <button
             type="button"
             onClick={() =>
@@ -324,6 +456,32 @@ export const SocialView: React.FC = () => {
         </div>
       </div>
 
+      {/* Wizz Celebration Flash Banner */}
+      {wizzBanner && (
+        <div className="p-4 rounded-[24px] bg-gradient-to-r from-[#831843] via-[#BE185D] to-[#EC4899] text-white shadow-md flex items-center justify-between gap-3 animate-in fade-in duration-150">
+          <div className="flex items-center gap-3">
+            <span className="w-10 h-10 rounded-2xl bg-white/20 flex items-center justify-center shrink-0">
+              <Zap className="w-5 h-5 text-[#FBCFE8]" />
+            </span>
+            <div>
+              <p className="font-display font-extrabold text-sm">
+                ⚡ WIZZ ENVOYÉ À {wizzBanner.friendName.toUpperCase()} ({wizzBanner.time}) !
+              </p>
+              <p className="text-xs text-white/90">
+                Vibration + boost de motivation envoyés ! Ton Wizz et sa réponse sont affichés dans le Fil d’activité.
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => setWizzBanner(null)}
+            className="text-white/80 hover:text-white shrink-0"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
+
       {/* Toast Feedback Banner */}
       {toastMessage && (
         <div className="p-3.5 rounded-2xl bg-[#831843] text-white text-xs font-bold flex items-center justify-between gap-2 shadow-md animate-in fade-in duration-150">
@@ -349,13 +507,18 @@ export const SocialView: React.FC = () => {
             {
               id: 'besties',
               label: 'Gym Besties & RDV',
-              badge: pendingGymDates.length > 0 ? pendingGymDates.length : undefined,
+              badge: gymDates.length > 0 ? gymDates.length : undefined,
             },
             { id: 'challenges', label: 'Défis & Podium', badge: undefined },
             {
               id: 'friends',
               label: 'Amies & Profil',
-              badge: pendingIncomingRequests.length > 0 ? pendingIncomingRequests.length : undefined,
+              badge:
+                pendingIncomingRequests.length > 0
+                  ? pendingIncomingRequests.length
+                  : friends.length > 0
+                  ? friends.length
+                  : undefined,
             },
           ] as const
         ).map((tab) => {
@@ -434,7 +597,7 @@ export const SocialView: React.FC = () => {
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
                 {friends.map((friend) => {
-                  const pokedTime = pokedFriendIds[friend.id];
+                  const pokedTime = pokedFriendIds[friend.id] || friend.lastPokedAt;
                   return (
                     <div
                       key={friend.id}
@@ -482,26 +645,21 @@ export const SocialView: React.FC = () => {
                         )}
                       </div>
 
-                      {/* Feature #13: Bouton Poke / Motivation */}
+                      {/* Feature #13: Bouton Wizz / Poke Motivation */}
                       <button
                         type="button"
-                        onClick={() => {
-                          pokeFriend(friend.id);
-                          triggerToast(
-                            `Poke envoyé à ${friend.displayName} : « Prête pour ta séance d’aujourd’hui ? 💪 »`
-                          );
-                        }}
-                        className={`w-full py-2 px-3 rounded-xl text-[11px] font-bold flex items-center justify-center gap-1.5 transition-all active:scale-97 cursor-pointer ${
+                        onClick={() => handleTriggerWizz(friend)}
+                        className={`w-full py-2 px-3 rounded-xl text-[11px] font-bold flex items-center justify-center gap-1.5 transition-all active:scale-95 cursor-pointer ${
                           pokedTime
-                            ? 'bg-[#FCE7F3] text-[#831843]'
-                            : 'bg-[#831843] hover:bg-[#500724] text-white'
+                            ? 'bg-[#FCE7F3] text-[#831843] border border-[#F472B6]/40'
+                            : 'bg-[#831843] hover:bg-[#500724] text-white shadow-2xs'
                         }`}
                       >
                         <Zap className="w-3.5 h-3.5" />
                         <span>
                           {pokedTime
-                            ? `Boost envoyé (${pokedTime})`
-                            : 'Envoyer un boost motivation'}
+                            ? `⚡ Wizz envoyé (${pokedTime}) · Relancer`
+                            : '⚡ Envoyer un Wizz motivation'}
                         </span>
                       </button>
                     </div>
@@ -510,6 +668,81 @@ export const SocialView: React.FC = () => {
               </div>
             )}
           </div>
+
+          {/* Encart visible dans le Fil : Mes Invitations de séance & RDV Salle programmés */}
+          {gymDates.length > 0 && (
+            <div className="p-4 sm:p-5 rounded-[28px] bg-white border-2 border-[#F472B6]/45 shadow-2xs space-y-3">
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2.5">
+                  <span className="w-9 h-9 rounded-2xl bg-[#FCE7F3] text-[#831843] flex items-center justify-center shrink-0">
+                    <Calendar className="w-4 h-4" />
+                  </span>
+                  <div>
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-[#831843] block">
+                      Rendez-vous « On s’entraîne ensemble ? »
+                    </span>
+                    <h3 className="font-display font-bold text-sm sm:text-base text-[#2B091C]">
+                      Tes invitations de séance programmées ({gymDates.length})
+                    </h3>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setSubTab('besties')}
+                  className="px-3 py-1.5 rounded-full bg-[#F6EDF2] hover:bg-[#FCE7F3] text-[#831843] text-xs font-bold shrink-0 cursor-pointer"
+                >
+                  Gérer dans RDV →
+                </button>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                {gymDates.map((d) => (
+                  <div
+                    key={d.id}
+                    className="p-3.5 rounded-2xl bg-[#FAF5F8] border border-[#F3E5ED] flex items-center justify-between gap-3"
+                  >
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <span
+                        className="w-9 h-9 rounded-xl text-white font-display font-bold text-xs flex items-center justify-center shrink-0"
+                        style={{ backgroundColor: d.friendAvatarColor }}
+                      >
+                        {d.friendName.charAt(0)}
+                      </span>
+                      <div className="min-w-0">
+                        <p className="font-display font-bold text-xs sm:text-sm text-[#2B091C] truncate">
+                          Avec {d.friendName} · {d.dayLabel} à {d.timeSlot}
+                        </p>
+                        <p className="text-[11px] font-semibold text-[#831843] truncate">
+                          {d.workoutTheme}
+                        </p>
+                        {d.locationNote && (
+                          <p className="text-[10px] text-[#7A616F] truncate italic">
+                            « {d.locationNote} »
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <span className="px-2.5 py-1 rounded-full bg-[#FCE7F3] text-[#831843] text-[10px] font-bold">
+                        {d.status === 'accepted' ? 'Envoyée ✓' : 'En attente'}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          deleteGymDateInvite(d.id);
+                          triggerToast('Invitation de séance retirée.');
+                        }}
+                        className="p-1.5 rounded-full text-[#8C6D7E] hover:text-[#831843] hover:bg-white cursor-pointer"
+                        title="Annuler ce RDV"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Quick Share Bar: Share Workout (#6), Celebrate PR (#9), Share 3 Objectives (#10), Story (#20) */}
           <div className="p-4 rounded-[26px] bg-[#F6EDF2] flex flex-wrap items-center justify-between gap-2.5">
@@ -551,6 +784,15 @@ export const SocialView: React.FC = () => {
                 <Check className="w-3.5 h-3.5 text-[#EC4899]" />
                 <span>Mes 3 objectifs</span>
               </button>
+
+              <button
+                type="button"
+                onClick={() => setSubTab('besties')}
+                className="px-3 py-1.5 rounded-full bg-[#831843] hover:bg-[#500724] text-white text-xs font-bold flex items-center gap-1.5 shadow-2xs transition-all cursor-pointer"
+              >
+                <Calendar className="w-3.5 h-3.5 text-[#FBCFE8]" />
+                <span>Inviter en séance</span>
+              </button>
             </div>
           </div>
 
@@ -586,9 +828,9 @@ export const SocialView: React.FC = () => {
                     {/* Post Type Pill */}
                     <span
                       className={`px-3 py-1 rounded-full text-[11px] font-bold flex items-center gap-1 ${
-                        post.type === 'pr'
+                        post.type === 'pr' || post.type === 'wizz'
                           ? 'bg-grainy-pink text-[#831843] border border-[#F472B6]/40'
-                          : post.type === 'objective'
+                          : post.type === 'objective' || post.type === 'gym_date'
                           ? 'bg-[#FCE7F3] text-[#831843]'
                           : 'bg-[#F6EDF2] text-[#831843]'
                       }`}
@@ -597,8 +839,63 @@ export const SocialView: React.FC = () => {
                       {post.type === 'workout' && `🏋️‍♀️ Séance · ${post.durationMinutes || 45} min`}
                       {post.type === 'objective' && '🎯 Objectif coché'}
                       {post.type === 'routine_share' && '📋 Routine partagée'}
+                      {post.type === 'wizz' && '⚡ Wizz Motivation'}
+                      {post.type === 'gym_date' && '📅 Invitation de séance'}
                     </span>
                   </div>
+
+                  {/* Feature #13 in Feed: Wizz Motivation Card */}
+                  {post.type === 'wizz' && (
+                    <div className="p-3.5 rounded-2xl bg-grainy-pink border border-[#F472B6]/40 flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-3">
+                        <span className="w-10 h-10 rounded-2xl bg-[#831843] text-white flex items-center justify-center shrink-0">
+                          <Zap className="w-5 h-5 text-[#FBCFE8]" />
+                        </span>
+                        <div>
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-[#831843] block">
+                            Boost d’énergie envoyé
+                          </span>
+                          <p className="font-display font-bold text-xs sm:text-sm text-[#2B091C]">
+                            Wizz envoyé à {post.wizzTargetName || 'ta Gym Bestie'}{' '}
+                            {post.wizzTargetHandle ? `(${post.wizzTargetHandle})` : ''}
+                          </p>
+                        </div>
+                      </div>
+                      <span className="px-3 py-1 rounded-full bg-white text-[#831843] font-mono font-bold text-[11px] shrink-0 shadow-2xs">
+                        ⚡ Vibrations
+                      </span>
+                    </div>
+                  )}
+
+                  {/* Feature #14 in Feed: Gym Date Invitation Card */}
+                  {post.type === 'gym_date' && post.gymDateSummary && (
+                    <div className="p-3.5 rounded-2xl bg-[#FAF5F8] border border-[#FBCFE8] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                      <div className="flex items-center gap-3">
+                        <span className="w-10 h-10 rounded-2xl bg-[#831843] text-white flex items-center justify-center shrink-0">
+                          <Calendar className="w-5 h-5 text-[#FBCFE8]" />
+                        </span>
+                        <div>
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-[#831843] block">
+                            RDV Salle programmé
+                          </span>
+                          <p className="font-display font-bold text-xs sm:text-sm text-[#2B091C]">
+                            Avec {post.gymDateSummary.friendName} · {post.gymDateSummary.dayLabel} à{' '}
+                            {post.gymDateSummary.timeSlot}
+                          </p>
+                          <p className="text-xs font-semibold text-[#831843]">
+                            {post.gymDateSummary.workoutTheme}
+                          </p>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setSubTab('besties')}
+                        className="px-3 py-1.5 rounded-full bg-[#FCE7F3] text-[#831843] text-xs font-bold shrink-0 cursor-pointer"
+                      >
+                        Voir mes RDV →
+                      </button>
+                    </div>
+                  )}
 
                   {/* Feature #9: Alerte & Célébration de Record Personnel (PR) */}
                   {post.type === 'pr' && post.prExerciseName && (
@@ -814,7 +1111,7 @@ export const SocialView: React.FC = () => {
                   Le fil d’activité est encore vierge ✨
                 </p>
                 <p className="text-xs text-[#7A616F] max-w-md mx-auto">
-                  Ajoute tes amies ou publie ta dernière séance, un record personnel (PR) ou tes 3 objectifs du moment pour inaugurer le Club !
+                  Ajoute tes amies, envoie un Wizz ou publie ta dernière séance, un record personnel (PR) ou une invitation de séance pour inaugurer le Club !
                 </p>
               </div>
             )}
@@ -943,27 +1240,32 @@ export const SocialView: React.FC = () => {
               </div>
 
               <form onSubmit={handleCreateGymDate} className="space-y-3">
-                <div className="grid grid-cols-2 gap-2.5">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                   <div>
                     <label className="text-[11px] font-bold text-[#7A616F] block mb-1">
                       Gym Bestie
                     </label>
-                    <select
-                      value={inviteFriendId || friends[0]?.id || ''}
-                      onChange={(e) => setInviteFriendId(e.target.value)}
-                      disabled={friends.length === 0}
-                      className="w-full px-3 py-2 rounded-xl bg-white text-xs font-bold text-[#2B091C] disabled:opacity-60"
-                    >
-                      {friends.length === 0 ? (
-                        <option value="">Aucune amie pour l’instant</option>
-                      ) : (
-                        friends.map((f) => (
+                    {friends.length > 0 ? (
+                      <select
+                        value={inviteFriendId || friends[0]?.id || ''}
+                        onChange={(e) => setInviteFriendId(e.target.value)}
+                        className="w-full px-3 py-2 rounded-xl bg-white text-xs font-bold text-[#2B091C]"
+                      >
+                        {friends.map((f) => (
                           <option key={f.id} value={f.id}>
                             {f.displayName} ({f.handle})
                           </option>
-                        ))
-                      )}
-                    </select>
+                        ))}
+                      </select>
+                    ) : (
+                      <input
+                        type="text"
+                        value={customInviteFriendQuery}
+                        onChange={(e) => setCustomInviteFriendQuery(e.target.value)}
+                        placeholder="Prénom ou @pseudo (ex: @lea.glow)"
+                        className="w-full px-3 py-2 rounded-xl bg-white text-xs font-bold text-[#2B091C]"
+                      />
+                    )}
                   </div>
 
                   <div>
@@ -1023,13 +1325,13 @@ export const SocialView: React.FC = () => {
 
                 <button
                   type="submit"
-                  disabled={friends.length === 0}
+                  disabled={friends.length === 0 && !customInviteFriendQuery.trim()}
                   className="w-full py-2.5 px-4 rounded-full bg-[#831843] hover:bg-[#500724] disabled:opacity-50 text-white text-xs font-bold flex items-center justify-center gap-2 cursor-pointer"
                 >
                   <Calendar className="w-3.5 h-3.5" />
                   <span>
-                    {friends.length === 0
-                      ? 'Ajoute une amie pour proposer un RDV'
+                    {friends.length === 0 && !customInviteFriendQuery.trim()
+                      ? 'Entre le @pseudo d’une amie ci-dessus pour inviter'
                       : 'Envoyer l’invitation de séance'}
                   </span>
                 </button>
@@ -1037,91 +1339,126 @@ export const SocialView: React.FC = () => {
             </div>
 
             {/* Active & Pending Gym Dates list */}
-            <div className="p-5 rounded-[28px] bg-white border border-[#F3E5ED] space-y-3">
-              <div>
-                <span className="text-[10px] font-bold uppercase tracking-wider text-[#831843] block">
-                  Vos créneaux à deux
-                </span>
-                <h3 className="font-display font-bold text-base text-[#2B091C]">
-                  Séances communes programmées
-                </h3>
+            <div
+              ref={gymDatesSectionRef}
+              className="p-5 rounded-[28px] bg-white border border-[#F3E5ED] space-y-3"
+            >
+              <div className="flex items-center justify-between gap-2">
+                <div>
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-[#831843] block">
+                    Vos créneaux à deux (affichés ici & dans le Fil)
+                  </span>
+                  <h3 className="font-display font-bold text-base text-[#2B091C]">
+                    Séances communes programmées ({gymDates.length})
+                  </h3>
+                </div>
+                {gymDates.length > 0 && (
+                  <span className="px-2.5 py-1 rounded-full bg-[#FCE7F3] text-[#831843] font-mono text-xs font-bold">
+                    {gymDates.length} RDV
+                  </span>
+                )}
               </div>
 
               <div className="space-y-2.5">
                 {gymDates.length === 0 && (
                   <p className="text-xs text-[#7A616F] py-4 text-center">
-                    Aucune séance commune programmée pour le moment.
+                    Aucune séance commune programmée pour le moment. Remplis le formulaire à gauche pour envoyer une invitation !
                   </p>
                 )}
-                {gymDates.map((d) => (
-                  <div
-                    key={d.id}
-                    className="p-3.5 rounded-2xl bg-[#FAF5F8] border border-[#F3E5ED] space-y-2"
-                  >
-                    <div className="flex items-center justify-between gap-2">
-                      <div className="flex items-center gap-2">
-                        <span
-                          className="w-8 h-8 rounded-xl text-white font-display font-bold text-xs flex items-center justify-center"
-                          style={{ backgroundColor: d.friendAvatarColor }}
-                        >
-                          {d.friendName.charAt(0)}
-                        </span>
-                        <div>
-                          <p className="font-display font-bold text-xs sm:text-sm text-[#2B091C]">
-                            Avec {d.friendName} · {d.dayLabel} à {d.timeSlot}
-                          </p>
-                          <p className="text-[11px] font-semibold text-[#831843]">
-                            {d.workoutTheme}
-                          </p>
+                {gymDates.map((d) => {
+                  const isHighlighted = highlightedInviteId === d.id;
+                  return (
+                    <div
+                      key={d.id}
+                      className={`p-3.5 rounded-2xl border space-y-2 transition-all ${
+                        isHighlighted
+                          ? 'bg-grainy-pink border-[#831843] ring-2 ring-[#F472B6]/50 shadow-sm'
+                          : 'bg-[#FAF5F8] border-[#F3E5ED]'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <span
+                            className="w-8 h-8 rounded-xl text-white font-display font-bold text-xs flex items-center justify-center shrink-0"
+                            style={{ backgroundColor: d.friendAvatarColor }}
+                          >
+                            {d.friendName.charAt(0)}
+                          </span>
+                          <div className="min-w-0">
+                            <p className="font-display font-bold text-xs sm:text-sm text-[#2B091C] truncate">
+                              Avec {d.friendName} · {d.dayLabel} à {d.timeSlot}
+                            </p>
+                            <p className="text-[11px] font-semibold text-[#831843] truncate">
+                              {d.workoutTheme}
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          <span
+                            className={`px-2.5 py-1 rounded-full text-[10px] font-bold ${
+                              d.status === 'accepted'
+                                ? 'bg-[#FCE7F3] text-[#831843]'
+                                : d.status === 'declined'
+                                ? 'bg-gray-100 text-gray-500'
+                                : 'bg-amber-100 text-amber-800'
+                            }`}
+                          >
+                            {d.status === 'accepted'
+                              ? 'Invitation envoyée ✓'
+                              : d.status === 'declined'
+                              ? 'Reporté'
+                              : 'En attente'}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              deleteGymDateInvite(d.id);
+                              triggerToast('Invitation de séance annulée.');
+                            }}
+                            className="p-1.5 rounded-full text-[#8C6D7E] hover:text-[#831843] hover:bg-white cursor-pointer"
+                            title="Supprimer cette invitation"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
                         </div>
                       </div>
 
-                      <span
-                        className={`px-2.5 py-1 rounded-full text-[10px] font-bold ${
-                          d.status === 'accepted'
-                            ? 'bg-[#FCE7F3] text-[#831843]'
-                            : d.status === 'declined'
-                            ? 'bg-gray-100 text-gray-500'
-                            : 'bg-amber-100 text-amber-800'
-                        }`}
-                      >
-                        {d.status === 'accepted'
-                          ? 'Confirmé ✓'
-                          : d.status === 'declined'
-                          ? 'Reporté'
-                          : 'En attente'}
-                      </span>
-                    </div>
+                      {d.locationNote && (
+                        <p className="text-[11px] text-[#7A616F] italic">
+                          « {d.locationNote} »
+                        </p>
+                      )}
 
-                    {d.locationNote && (
-                      <p className="text-[11px] text-[#7A616F] italic">
-                        « {d.locationNote} »
-                      </p>
-                    )}
-
-                    {d.status === 'pending' && (
-                      <div className="flex items-center gap-2 pt-1">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            respondToGymDate(d.id, true);
-                            triggerToast(`Séance de ${d.dayLabel} confirmée avec ${d.friendName} !`);
-                          }}
-                          className="flex-1 py-2 rounded-full bg-[#831843] text-white text-xs font-bold cursor-pointer"
-                        >
-                          Accepter le RDV
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => respondToGymDate(d.id, false)}
-                          className="px-3 py-2 rounded-full bg-white text-[#7A616F] text-xs font-bold cursor-pointer"
-                        >
-                          Plus tard
-                        </button>
+                      <div className="flex items-center justify-between text-[10px] text-[#8C6D7E]">
+                        <span>{d.createdAt}</span>
+                        <span>Visible aussi dans l’onglet Fil & Activité</span>
                       </div>
-                    )}
-                  </div>
-                ))}
+
+                      {d.status === 'pending' && (
+                        <div className="flex items-center gap-2 pt-1">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              respondToGymDate(d.id, true);
+                              triggerToast(`Séance de ${d.dayLabel} confirmée avec ${d.friendName} !`);
+                            }}
+                            className="flex-1 py-2 rounded-full bg-[#831843] text-white text-xs font-bold cursor-pointer"
+                          >
+                            Accepter le RDV
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => respondToGymDate(d.id, false)}
+                            className="px-3 py-2 rounded-full bg-white text-[#7A616F] text-xs font-bold cursor-pointer"
+                          >
+                            Plus tard
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             </div>
           </div>
@@ -1798,14 +2135,20 @@ export const SocialView: React.FC = () => {
                       </button>
                       <button
                         type="button"
-                        onClick={() => {
-                          pokeFriend(friend.id);
-                          triggerToast(`Boost envoyé à ${friend.displayName} 💪`);
-                        }}
-                        className="px-3 py-2 rounded-full bg-[#831843] text-white text-xs font-bold cursor-pointer"
-                        title="Envoyer un boost"
+                        onClick={() => handleTriggerWizz(friend)}
+                        className={`px-3.5 py-2 rounded-full text-xs font-bold flex items-center gap-1 transition-all active:scale-95 cursor-pointer ${
+                          pokedFriendIds[friend.id] || friend.lastPokedAt
+                            ? 'bg-[#FCE7F3] text-[#831843] border border-[#F472B6]/40'
+                            : 'bg-[#831843] hover:bg-[#500724] text-white'
+                        }`}
+                        title="Envoyer un Wizz motivation"
                       >
                         <Zap className="w-3.5 h-3.5" />
+                        <span>
+                          {pokedFriendIds[friend.id] || friend.lastPokedAt
+                            ? `Wizz (${pokedFriendIds[friend.id] || friend.lastPokedAt})`
+                            : 'Wizz ⚡'}
+                        </span>
                       </button>
                     </div>
                   </div>
@@ -2036,17 +2379,29 @@ export const SocialView: React.FC = () => {
               </div>
             </div>
 
-            <div className="flex items-center justify-between gap-2">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  handleTriggerWizz(selectedFriendProfile);
+                  setSelectedFriendProfile(null);
+                }}
+                className="flex-1 py-2.5 px-3 rounded-full bg-gradient-to-r from-[#831843] to-[#EC4899] text-white text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer"
+              >
+                <Zap className="w-3.5 h-3.5" />
+                <span>Envoyer un Wizz ⚡</span>
+              </button>
               <button
                 type="button"
                 onClick={() => {
                   setCompareFriendId(selectedFriendProfile.id);
+                  setInviteFriendId(selectedFriendProfile.id);
                   setSelectedFriendProfile(null);
                   setSubTab('besties');
                 }}
-                className="flex-1 py-2.5 rounded-full bg-[#831843] text-white text-xs font-bold cursor-pointer"
+                className="flex-1 py-2.5 px-3 rounded-full bg-[#831843] text-white text-xs font-bold cursor-pointer"
               >
-                Comparer nos plannings
+                Inviter / Planning
               </button>
               <button
                 type="button"

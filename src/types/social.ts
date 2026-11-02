@@ -26,7 +26,7 @@ export interface SocialFeedPost {
   authorName: string;
   authorHandle: string;
   authorAvatarColor: string;
-  type: 'workout' | 'pr' | 'objective' | 'routine_share';
+  type: 'workout' | 'pr' | 'objective' | 'routine_share' | 'wizz' | 'gym_date';
   createdAt: string;
   workoutName?: string;
   durationMinutes?: number;
@@ -42,6 +42,15 @@ export interface SocialFeedPost {
   prReps?: number;
   objectiveLabel?: string;
   sharedRoutine?: SharedRoutinePayload;
+  wizzTargetName?: string;
+  wizzTargetHandle?: string;
+  gymDateSummary?: {
+    friendName: string;
+    dayLabel: string;
+    timeSlot: string;
+    workoutTheme: string;
+    locationNote?: string;
+  };
   caption?: string;
   reactions: Record<ReactionType, string[]>; // list of userIds who reacted
   comments: SocialComment[];

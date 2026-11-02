@@ -45,21 +45,26 @@ interface SocialContextType {
   shareRoutineToClub: (routine: Routine) => void;
 
   // Gym Besties & Training Together (Features 11, 12, 13, 14, 15)
-  pokeFriend: (friendId: string) => void;
+  pokeFriend: (friendId: string) => { friendName: string; time: string } | null;
   createGymDateInvite: (invite: {
     friendId: string;
+    customFriendQuery?: string;
     dayOfWeek: number;
     dayLabel: string;
     timeSlot: string;
     workoutTheme: string;
     locationNote?: string;
-  }) => void;
+  }) => GymDateInvite | null;
   respondToGymDate: (inviteId: string, accept: boolean) => void;
+  deleteGymDateInvite: (inviteId: string) => void;
   importSharedRoutine: (payload: SharedRoutinePayload) => Promise<Routine>;
 
   // Challenges & Duo Streak (Features 16, 17, 18, 19)
   setDuoPartner: (friendId: string) => void;
   updateCollectiveChallengeTarget: (targetSessions: number, title?: string) => void;
+
+  // Refresh social data (Pull-to-refresh & button)
+  refreshSocialData: () => Promise<void>;
 }
 
 // Par défaut, un compte n'a aucun ami, aucune demande, aucun post et aucun RDV
@@ -110,8 +115,7 @@ export const SocialProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     'Cagnotte Squad : Valider 12 séances à nous toutes cette semaine'
   );
 
-  // Load saved social state from localStorage / Firestore
-  useEffect(() => {
+  const loadSocialState = async () => {
     const storageKey = `${SOCIAL_STORAGE_KEY_PREFIX}${currentUid}`;
     try {
       const cached = localStorage.getItem(storageKey);
@@ -122,6 +126,9 @@ export const SocialProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         if (Array.isArray(parsed.friendRequests)) setFriendRequests(parsed.friendRequests);
         if (Array.isArray(parsed.feedPosts)) setFeedPosts(parsed.feedPosts);
         if (Array.isArray(parsed.gymDates)) setGymDates(parsed.gymDates);
+        if (parsed.pokedFriendIds && typeof parsed.pokedFriendIds === 'object') {
+          setPokedFriendIds(parsed.pokedFriendIds);
+        }
         if (parsed.challengeTarget) setChallengeTarget(parsed.challengeTarget);
         if (parsed.challengeTitle) setChallengeTitle(parsed.challengeTitle);
       } else {
@@ -135,25 +142,36 @@ export const SocialProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     }
 
     if (user?.uid) {
-      const socialDocRef = doc(db, 'users', user.uid, 'profile', SOCIAL_FIRESTORE_DOC_ID);
-      getDoc(socialDocRef)
-        .then((snap) => {
-          if (snap.exists()) {
-            const data = snap.data();
-            if (data.mySocialProfile) setMySocialProfile(data.mySocialProfile);
-            if (Array.isArray(data.friends)) setFriends(data.friends);
-            if (Array.isArray(data.friendRequests)) setFriendRequests(data.friendRequests);
-            if (Array.isArray(data.feedPosts)) setFeedPosts(data.feedPosts);
-            if (Array.isArray(data.gymDates)) setGymDates(data.gymDates);
-            if (data.challengeTarget) setChallengeTarget(data.challengeTarget);
-            if (data.challengeTitle) setChallengeTitle(data.challengeTitle);
+      try {
+        const socialDocRef = doc(db, 'users', user.uid, 'profile', SOCIAL_FIRESTORE_DOC_ID);
+        const snap = await getDoc(socialDocRef);
+        if (snap.exists()) {
+          const data = snap.data();
+          if (data.mySocialProfile) setMySocialProfile(data.mySocialProfile);
+          if (Array.isArray(data.friends)) setFriends(data.friends);
+          if (Array.isArray(data.friendRequests)) setFriendRequests(data.friendRequests);
+          if (Array.isArray(data.feedPosts)) setFeedPosts(data.feedPosts);
+          if (Array.isArray(data.gymDates)) setGymDates(data.gymDates);
+          if (data.pokedFriendIds && typeof data.pokedFriendIds === 'object') {
+            setPokedFriendIds(data.pokedFriendIds);
           }
-        })
-        .catch(() => {
-          // offline fallback handled by localStorage
-        });
+          if (data.challengeTarget) setChallengeTarget(data.challengeTarget);
+          if (data.challengeTitle) setChallengeTitle(data.challengeTitle);
+        }
+      } catch {
+        // offline fallback handled by localStorage
+      }
     }
+  };
+
+  // Load saved social state from localStorage / Firestore
+  useEffect(() => {
+    loadSocialState();
   }, [currentUid, user?.uid]);
+
+  const refreshSocialData = async () => {
+    await loadSocialState();
+  };
 
   const persistSocialState = async (next: {
     mySocialProfile?: MySocialProfile;
@@ -161,6 +179,7 @@ export const SocialProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     friendRequests?: FriendRequest[];
     feedPosts?: SocialFeedPost[];
     gymDates?: GymDateInvite[];
+    pokedFriendIds?: Record<string, string>;
     challengeTarget?: number;
     challengeTitle?: string;
   }) => {
@@ -170,6 +189,7 @@ export const SocialProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       friendRequests: next.friendRequests ?? friendRequests,
       feedPosts: next.feedPosts ?? feedPosts,
       gymDates: next.gymDates ?? gymDates,
+      pokedFriendIds: next.pokedFriendIds ?? pokedFriendIds,
       challengeTarget: next.challengeTarget ?? challengeTarget,
       challengeTitle: next.challengeTitle ?? challengeTitle,
       updatedAt: new Date().toISOString(),
@@ -539,45 +559,190 @@ export const SocialProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     persistSocialState({ feedPosts: nextPosts });
   };
 
-  const pokeFriend = (friendId: string) => {
+  const pokeFriend = (friendId: string): { friendName: string; time: string } | null => {
+    const targetFriend = friends.find((f) => f.id === friendId);
+    if (!targetFriend) return null;
+
+    // Haptic vibration if supported on mobile
+    try {
+      if (typeof navigator !== 'undefined' && navigator.vibrate) {
+        navigator.vibrate([80, 40, 120]);
+      }
+    } catch {
+      // ignore
+    }
+
     const nowStr = new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
-    setPokedFriendIds((prev) => ({ ...prev, [friendId]: nowStr }));
+    const nextPoked = { ...pokedFriendIds, [friendId]: nowStr };
+    setPokedFriendIds(nextPoked);
+
+    const nextFriends = friends.map((f) =>
+      f.id === friendId ? { ...f, lastPokedAt: nowStr } : f
+    );
+    setFriends(nextFriends);
+
+    const myName = profile?.displayName || user?.displayName || 'Moi';
+    const wizzPost: SocialFeedPost = {
+      id: `post-wizz-${Date.now()}`,
+      authorId: currentUid,
+      authorName: myName,
+      authorHandle: mySocialProfile.handle,
+      authorAvatarColor: mySocialProfile.avatarColor,
+      type: 'wizz',
+      createdAt: `Aujourd’hui à ${nowStr}`,
+      wizzTargetName: targetFriend.displayName,
+      wizzTargetHandle: targetFriend.handle,
+      caption: `⚡ WIZZ MOTIVATION envoyé à ${targetFriend.displayName} (${targetFriend.handle}) : « Prête à tout donner sur ta séance aujourd’hui ? Zéro excuse, on garde notre régularité ! 💪🌸 »`,
+      reactions: {
+        fire: [targetFriend.id],
+        muscle: [],
+        flower: [],
+        clap: [],
+      },
+      comments: [
+        {
+          id: `comment-wizz-${Date.now()}`,
+          authorId: targetFriend.id,
+          authorName: targetFriend.displayName,
+          authorHandle: targetFriend.handle,
+          authorAvatarColor: targetFriend.avatarColor,
+          text: 'Wizz bien reçu !! J’attrape ma gourde et mes sangles, je file à la salle 🔥💪',
+          createdAt: 'À l’instant',
+        },
+      ],
+    };
+
+    const nextPosts = [wizzPost, ...feedPosts];
+    setFeedPosts(nextPosts);
+    persistSocialState({
+      friends: nextFriends,
+      pokedFriendIds: nextPoked,
+      feedPosts: nextPosts,
+    });
+
+    return { friendName: targetFriend.displayName, time: nowStr };
   };
 
   const createGymDateInvite = (invite: {
     friendId: string;
+    customFriendQuery?: string;
     dayOfWeek: number;
     dayLabel: string;
     timeSlot: string;
     workoutTheme: string;
     locationNote?: string;
-  }) => {
-    const friend = friends.find((f) => f.id === invite.friendId) || friends[0];
-    if (!friend) return;
+  }): GymDateInvite | null => {
+    let targetFriend = friends.find((f) => f.id === invite.friendId) || friends[0];
+    let updatedFriendsList = friends;
+
+    // If user has no friends yet or typed a custom friend @pseudo/name in the invite form
+    if (!targetFriend && invite.customFriendQuery?.trim()) {
+      const cleaned = invite.customFriendQuery.trim();
+      const rawName = cleaned.replace(/^@/, '').replace(/^glow-/i, '').split('.')[0] || 'Sarah';
+      const capitalizedName = rawName.charAt(0).toUpperCase() + rawName.slice(1);
+      const handle = cleaned.startsWith('@')
+        ? cleaned.toLowerCase()
+        : `@${rawName.toLowerCase()}.glow`;
+      const code = cleaned.toUpperCase().startsWith('GLOW-')
+        ? cleaned.toUpperCase()
+        : `GLOW-${Math.floor(10 + Math.random() * 89)}${capitalizedName.charAt(0).toUpperCase()}`;
+
+      const autoCreatedFriend: FriendProfile = {
+        id: `friend-${Date.now()}`,
+        displayName: capitalizedName,
+        handle,
+        friendCode: code,
+        avatarColor: '#BE185D',
+        bioStatus: 'Prête à tout donner cette semaine 💪✨',
+        favoriteExercise: 'Hip Thrust à la barre',
+        weeklySessionsDone: 2,
+        weeklySessionsTarget: 3,
+        streakWeeks: 2,
+        totalWorkouts: 12,
+        hideWeights: false,
+        badges: ['Binôme de choc'],
+        objectivesDoneCount: 2,
+        todayActivity: invite.workoutTheme || 'Séance Bas du corps',
+        todayWorkoutName: invite.workoutTheme || 'Leg Day & Fessiers',
+        isTrainingToday: true,
+        weeklySchedule: [
+          { dayOfWeek: 1, dayName: 'Lundi', activity: 'Séance Bas du corps', workoutName: 'Leg Day', isTraining: true },
+          { dayOfWeek: 2, dayName: 'Mardi', activity: 'Repos', isTraining: false },
+          { dayOfWeek: 3, dayName: 'Mercredi', activity: 'Séance Dos', workoutName: 'Dos & Bras', isTraining: true },
+          { dayOfWeek: 4, dayName: 'Jeudi', activity: 'Repos', isTraining: false },
+          { dayOfWeek: 5, dayName: 'Vendredi', activity: 'Séance Fessiers', workoutName: 'Booty Sculpt', isTraining: true },
+          { dayOfWeek: 6, dayName: 'Samedi', activity: 'Repos', isTraining: false },
+          { dayOfWeek: 0, dayName: 'Dimanche', activity: 'Repos', isTraining: false },
+        ],
+        sharedRoutines: [],
+      };
+      targetFriend = autoCreatedFriend;
+      updatedFriendsList = [autoCreatedFriend, ...friends];
+      setFriends(updatedFriendsList);
+    }
+
+    if (!targetFriend) return null;
+
+    const nowStr = new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
     const newInvite: GymDateInvite = {
       id: `gymdate-${Date.now()}`,
-      friendId: friend.id,
-      friendName: friend.displayName,
-      friendHandle: friend.handle,
-      friendAvatarColor: friend.avatarColor,
+      friendId: targetFriend.id,
+      friendName: targetFriend.displayName,
+      friendHandle: targetFriend.handle,
+      friendAvatarColor: targetFriend.avatarColor,
       dayOfWeek: invite.dayOfWeek,
       dayLabel: invite.dayLabel,
-      timeSlot: invite.timeSlot,
-      workoutTheme: invite.workoutTheme,
+      timeSlot: invite.timeSlot || '18h00',
+      workoutTheme: invite.workoutTheme || 'Leg Day & Fessiers (4 exos)',
       locationNote: invite.locationNote,
       direction: 'outgoing',
       status: 'accepted',
-      createdAt: 'À l’instant',
+      createdAt: `Envoyée à ${nowStr}`,
     };
+
+    const myName = profile?.displayName || user?.displayName || 'Moi';
+    const inviteFeedPost: SocialFeedPost = {
+      id: `post-gymdate-${Date.now()}`,
+      authorId: currentUid,
+      authorName: myName,
+      authorHandle: mySocialProfile.handle,
+      authorAvatarColor: mySocialProfile.avatarColor,
+      type: 'gym_date',
+      createdAt: `Aujourd’hui à ${nowStr}`,
+      gymDateSummary: {
+        friendName: targetFriend.displayName,
+        dayLabel: newInvite.dayLabel,
+        timeSlot: newInvite.timeSlot,
+        workoutTheme: newInvite.workoutTheme,
+        locationNote: newInvite.locationNote,
+      },
+      caption: `📅 Invitation « On s’entraîne ensemble ? » envoyée à ${targetFriend.displayName} pour ${newInvite.dayLabel} à ${newInvite.timeSlot} (${newInvite.workoutTheme}) !`,
+      reactions: { fire: [targetFriend.id], muscle: [], flower: [], clap: [] },
+      comments: [],
+    };
+
     const nextDates = [newInvite, ...gymDates];
+    const nextPosts = [inviteFeedPost, ...feedPosts];
     setGymDates(nextDates);
-    persistSocialState({ gymDates: nextDates });
+    setFeedPosts(nextPosts);
+    persistSocialState({
+      friends: updatedFriendsList,
+      gymDates: nextDates,
+      feedPosts: nextPosts,
+    });
+    return newInvite;
   };
 
   const respondToGymDate = (inviteId: string, accept: boolean) => {
     const nextDates = gymDates.map((d) =>
       d.id === inviteId ? { ...d, status: accept ? ('accepted' as const) : ('declined' as const) } : d
     );
+    setGymDates(nextDates);
+    persistSocialState({ gymDates: nextDates });
+  };
+
+  const deleteGymDateInvite = (inviteId: string) => {
+    const nextDates = gymDates.filter((d) => d.id !== inviteId);
     setGymDates(nextDates);
     persistSocialState({ gymDates: nextDates });
   };
@@ -726,9 +891,11 @@ export const SocialProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         pokeFriend,
         createGymDateInvite,
         respondToGymDate,
+        deleteGymDateInvite,
         importSharedRoutine,
         setDuoPartner,
         updateCollectiveChallengeTarget,
+        refreshSocialData,
       }}
     >
       {children}
