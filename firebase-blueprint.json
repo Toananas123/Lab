@@ -109,12 +109,53 @@
         "updatedAt": { "type": "string", "format": "date-time" }
       },
       "required": ["dayOfWeek", "status"]
+    },
+    "UserTrainingProgram": {
+      "title": "UserTrainingProgram",
+      "description": "Custom or imported multi-week training program",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "title": { "type": "string", "maxLength": 150 },
+        "objective": { "type": "string", "enum": ["hypertrophy", "shred", "toning", "performance"] },
+        "durationWeeks": { "type": "number" },
+        "sessionsPerWeek": { "type": "number" },
+        "level": { "type": "string", "maxLength": 50 },
+        "weeks": { "type": "string", "maxLength": 50000 },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["title", "objective", "durationWeeks"]
+    },
+    "UserActiveProgram": {
+      "title": "UserActiveProgram",
+      "description": "Active program progress, preferred days, and progressive overload state",
+      "type": "object",
+      "properties": {
+        "programId": { "type": "string", "maxLength": 128 },
+        "programTitle": { "type": "string", "maxLength": 150 },
+        "startDate": { "type": "string", "maxLength": 50 },
+        "durationWeeks": { "type": "number" },
+        "sessionsPerWeek": { "type": "number" },
+        "currentWeek": { "type": "number" },
+        "progressPercent": { "type": "number" },
+        "totalVolumeKg": { "type": "number" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["programId", "programTitle", "startDate"]
     }
   },
   "firestore": {
     "/users/{userId}/profile/main": {
       "schema": "UserProfile",
       "description": "User profile document"
+    },
+    "/users/{userId}/profile/active_program": {
+      "schema": "UserActiveProgram",
+      "description": "Active training program progress and onboarding state"
+    },
+    "/users/{userId}/programs/{programId}": {
+      "schema": "UserTrainingProgram",
+      "description": "Custom and imported training programs"
     },
     "/users/{userId}/exercises/{exerciseId}": {
       "schema": "UserCustomExercise",
@@ -142,3 +183,4 @@
     }
   }
 }
+

@@ -12,6 +12,7 @@ import { PlanningView } from './components/planning/PlanningView';
 import { ProgressView } from './components/progress/ProgressView';
 import { MeasurementsView } from './components/measurements/MeasurementsView';
 import { SocialView } from './components/social/SocialView';
+import { ProgramsView } from './components/programs/ProgramsView';
 import { SocialProvider } from './context/SocialContext';
 import { ProfileModal } from './components/profile/ProfileModal';
 import { AuthModal } from './components/auth/AuthModal';
@@ -143,6 +144,13 @@ const AuthenticatedApp: React.FC = () => {
                 onOpenCategory={handleOpenCategory}
                 onOpenMeasurements={handleOpenMeasurements}
                 onStartActiveMode={handleStartActiveMode}
+              />
+            )}
+
+            {currentTab === 'programs' && (
+              <ProgramsView
+                onStartWorkoutSession={handleStartActiveMode}
+                onNavigateToPlanning={() => setCurrentTab('planning')}
               />
             )}
 

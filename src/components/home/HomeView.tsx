@@ -19,7 +19,7 @@ import {
 } from '../ui/StreamlineIcon';
 
 interface HomeViewProps {
-  onNavigateTab: (tab: 'exercises' | 'workouts' | 'planning' | 'progress' | 'social') => void;
+  onNavigateTab: (tab: 'programs' | 'exercises' | 'workouts' | 'planning' | 'progress' | 'social') => void;
   onOpenCategory: (cat: MuscleCategory) => void;
   onOpenMeasurements: () => void;
   onStartActiveMode: () => void;
@@ -47,6 +47,8 @@ export const HomeView: React.FC<HomeViewProps> = ({
     startWorkout,
     workouts,
     measurements,
+    activeProgram,
+    programs,
   } = useWorkout();
   const { friends } = useSocial();
 
@@ -188,7 +190,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
   const primaryActivity = selectedActivities[0] || 'Repos';
   const isSelectedToday = Number(selectedDayPlan.dayOfWeek) === todayDayOfWeek;
 
-  const launchRoutine = (routine: (typeof routines)[0]) => {
+  const launchRoutine = (routine: (typeof routines)[0], dayPlan?: WeeklyPlanDay) => {
     const clonedExercises = routine.exercises.map((ex, exIdx) => ({
       ...ex,
       id: `ex_${Date.now()}_${exIdx}`,
@@ -201,9 +203,13 @@ export const HomeView: React.FC<HomeViewProps> = ({
       })),
     }));
     startWorkout({
-      name: routine.name,
+      name: dayPlan?.workoutName || routine.name,
       exercises: clonedExercises,
-      finisher: routine.finisher,
+      finisher: dayPlan?.finisher || routine.finisher,
+      finisherPresetId: dayPlan?.finisherPresetId || routine.finisherPresetId,
+      programId: dayPlan?.programId || activeProgram?.programId,
+      programWeekNumber: dayPlan?.programWeekNumber || activeProgram?.currentWeek,
+      programDayId: dayPlan?.programDayId,
       notes: routine.notes,
     });
     onStartActiveMode();
@@ -213,7 +219,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
     if (selectedDayPlan.routineId) {
       const linked = routines.find((r) => r.id === selectedDayPlan.routineId);
       if (linked) {
-        launchRoutine(linked);
+        launchRoutine(linked, selectedDayPlan);
         return;
       }
     }
@@ -229,7 +235,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
     });
 
     if (matchedRoutine) {
-      launchRoutine(matchedRoutine);
+      launchRoutine(matchedRoutine, selectedDayPlan);
     } else {
       onNavigateTab('workouts');
     }
@@ -388,19 +394,85 @@ export const HomeView: React.FC<HomeViewProps> = ({
                   </div>
                 </div>
 
-                {/* Bottom: Clean activity title without truncation/overflow */}
+                {/* Bottom: Clean activity title (shows Program workout title if scheduled) */}
                 <span
                   className={`font-display font-bold text-xs sm:text-[13px] leading-snug line-clamp-2 break-words w-full mt-2 ${
                     isSelected ? 'text-white' : 'text-[#2B091C]'
                   }`}
                 >
-                  {compactLabel}
+                  {day.workoutName && day.status !== 'rest' ? day.workoutName : compactLabel}
                 </span>
               </button>
             );
           })}
         </div>
       </div>
+
+      {/* WIDGET PROGRAMME ACTIF (ACCUEIL) — SUIVI DE PROGRESSION GLOBALE */}
+      {activeProgram ? (
+        <div
+          onClick={() => onNavigateTab('programs')}
+          className="p-4 sm:p-5 rounded-[28px] bg-white border-2 border-[#EC4899]/40 shadow-sm hover:shadow-md transition-all cursor-pointer space-y-3"
+        >
+          <div className="flex items-start justify-between gap-3">
+            <div className="space-y-0.5 min-w-0">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="px-2.5 py-0.5 rounded-full bg-[#FCE7F3] text-[#831843] text-[10px] font-extrabold uppercase tracking-wider">
+                  Programme Actif
+                </span>
+                <span className="text-[11px] font-bold text-[#EC4899]">
+                  Semaine {activeProgram.currentWeek}/{activeProgram.durationWeeks} — {activeProgram.progressPercent}% complété
+                </span>
+              </div>
+              <h2 className="font-display font-extrabold text-base sm:text-lg text-[#2B091C] truncate">
+                {activeProgram.programTitle}
+              </h2>
+            </div>
+
+            <span className="px-3 py-1.5 rounded-full bg-[#831843] text-white text-[11px] font-extrabold shrink-0 flex items-center gap-1">
+              <span>{activeProgram.isCompleted ? 'Voir Bilan' : 'Mon Programme'}</span>
+              <ChevronRight className="w-3.5 h-3.5" />
+            </span>
+          </div>
+
+          {/* Barre de progression globale */}
+          <div className="space-y-1.5">
+            <div className="w-full h-2.5 bg-[#F6EDF2] rounded-full overflow-hidden border border-[#FBCFE8]">
+              <div
+                className="h-full bg-gradient-to-r from-[#831843] to-[#EC4899] transition-all duration-500"
+                style={{ width: `${Math.max(5, activeProgram.progressPercent)}%` }}
+              />
+            </div>
+            <div className="flex items-center justify-between text-[11px] text-[#7A616F] font-semibold">
+              <span>
+                {activeProgram.completedSessionCount}/{activeProgram.totalSessionsPlanned} séances validées
+              </span>
+              <span>Volume cumulé : {activeProgram.totalVolumeKg.toLocaleString('fr-FR')} kg</span>
+            </div>
+          </div>
+        </div>
+      ) : (
+        <div
+          onClick={() => onNavigateTab('programs')}
+          className="p-4 sm:p-5 rounded-[28px] bg-gradient-to-r from-[#3B0726] via-[#590D3B] to-[#831843] text-white shadow-md hover:opacity-98 transition-all cursor-pointer flex items-center justify-between gap-4"
+        >
+          <div className="space-y-1 min-w-0">
+            <span className="px-2.5 py-0.5 rounded-full bg-white/15 text-pink-200 text-[10px] font-extrabold uppercase tracking-wider inline-block">
+              Nouveau · {programs.length} Programmes Clés en Main
+            </span>
+            <h2 className="font-display font-extrabold text-base sm:text-lg text-white truncate">
+              Démarrer un Programme d’Entraînement
+            </h2>
+            <p className="text-xs text-pink-100/85 line-clamp-1">
+              Booty Builder 8 sem., Shred & Sweat, Tonique & Posture ou Créateur sur-mesure
+            </p>
+          </div>
+          <span className="px-4 py-2.5 rounded-full bg-white text-[#831843] text-xs font-extrabold shrink-0 flex items-center gap-1 shadow-sm">
+            <span>Explorer</span>
+            <ChevronRight className="w-3.5 h-3.5" />
+          </span>
+        </div>
+      )}
 
       {/* 3. Bannière Photo focus du jour sélectionné + CTA Commencer la séance */}
       <div className="relative overflow-hidden rounded-[32px] min-h-[196px] sm:min-h-[204px] border border-[#EC4899]/30 shadow-xl group flex flex-col justify-between p-5 sm:p-6 text-white">
@@ -424,18 +496,25 @@ export const HomeView: React.FC<HomeViewProps> = ({
               />
             </div>
             <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
                 <span className="px-2.5 py-0.5 rounded-full bg-[#EC4899] text-white text-[10px] font-extrabold uppercase tracking-wider shadow-sm">
                   {isSelectedToday ? 'Aujourd’hui' : selectedDayPlan.dayName}
                 </span>
                 {selectedDayPlan.finisherType && selectedDayPlan.finisherType !== 'none' && (
                   <span className="text-xs text-[#FBCFE8] font-semibold drop-shadow-xs">
-                    + {selectedDayPlan.finisherType === 'cardio' ? 'Cardio' : 'Abdos'}
+                    + Finisher{' '}
+                    {selectedDayPlan.finisherType === 'cardio'
+                      ? 'Cardio'
+                      : selectedDayPlan.finisherType === 'pump'
+                      ? 'Pump 100 Reps'
+                      : 'Abdos'}
                   </span>
                 )}
               </div>
               <h2 className="font-display font-extrabold text-xl sm:text-2xl text-white leading-tight tracking-tight mt-1.5 drop-shadow-md">
-                {primaryActivity}
+                {selectedDayPlan.workoutName && selectedDayPlan.status !== 'rest'
+                  ? selectedDayPlan.workoutName
+                  : primaryActivity}
               </h2>
               {selectedActivities.length > 1 && (
                 <p className="text-xs text-[#FBCFE8] font-medium truncate mt-0.5 drop-shadow-xs">

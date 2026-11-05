@@ -161,7 +161,7 @@ export const PlanningView: React.FC<PlanningViewProps> = ({ onStartActiveMode })
   const [selectedActivities, setSelectedActivities] = useState<ActivityType[]>(['Séance Bas du corps']);
   const [selectedRoutineId, setSelectedRoutineId] = useState<string>('');
   const [customWorkoutName, setCustomWorkoutName] = useState<string>('');
-  const [finisherType, setFinisherType] = useState<'none' | 'cardio' | 'abs'>('none');
+  const [finisherType, setFinisherType] = useState<'none' | 'cardio' | 'abs' | 'pump'>('none');
   const [finisherText, setFinisherText] = useState<string>('');
   const [dayStatus, setDayStatus] = useState<WeeklyPlanDay['status']>('planned');
 
@@ -273,6 +273,10 @@ export const PlanningView: React.FC<PlanningViewProps> = ({ onStartActiveMode })
         name: day.workoutName || targetRoutine.name,
         exercises: clonedExercises,
         finisher: day.finisher || targetRoutine.finisher,
+        finisherPresetId: day.finisherPresetId || targetRoutine.finisherPresetId,
+        programId: day.programId,
+        programWeekNumber: day.programWeekNumber,
+        programDayId: day.programDayId,
       });
       onStartActiveMode();
     }

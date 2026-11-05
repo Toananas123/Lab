@@ -20,6 +20,7 @@ import { useWorkout } from '../../context/WorkoutContext';
 import { getEquipmentBadge } from '../../utils/equipmentBadge';
 import { WarmupAndStretchingGuide } from './WarmupAndStretchingGuide';
 import { StreamlineIcon } from '../ui/StreamlineIcon';
+import { FINISHERS_CATALOG } from '../../data/programsAndFinishersData';
 
 interface WorkoutEditorModalProps {
   isOpen: boolean;
@@ -28,15 +29,17 @@ interface WorkoutEditorModalProps {
     name: string;
     exercises: WorkoutExerciseItem[];
     finisher?: string;
+    finisherPresetId?: string;
     notes?: string;
     rating?: number;
-    finisherType?: 'none' | 'cardio' | 'abs';
+    finisherType?: 'none' | 'cardio' | 'abs' | 'pump';
   }) => void;
   onSaveRoutine: (routine: {
     name: string;
     targetZone: string;
     exercises: WorkoutExerciseItem[];
     finisher?: string;
+    finisherPresetId?: string;
     notes?: string;
   }) => void;
 }
@@ -53,9 +56,10 @@ export const WorkoutEditorModal: React.FC<WorkoutEditorModalProps> = ({
   const [name, setName] = useState('Ma Séance Sur-Mesure');
   const [exercises, setExercises] = useState<WorkoutExerciseItem[]>([]);
   
-  // Finisher selection: 'none' | 'cardio' | 'abs'
-  const [finisherType, setFinisherType] = useState<'none' | 'cardio' | 'abs'>('none');
+  // Finisher selection: 'none' | 'cardio' | 'abs' | 'pump'
+  const [finisherType, setFinisherType] = useState<'none' | 'cardio' | 'abs' | 'pump'>('none');
   const [finisher, setFinisher] = useState('');
+  const [finisherPresetId, setFinisherPresetId] = useState<string | undefined>(undefined);
   
   // Rating (1 to 5 🔥) & Notes
   const [rating, setRating] = useState<number>(5);
@@ -192,31 +196,17 @@ export const WorkoutEditorModal: React.FC<WorkoutEditorModalProps> = ({
     setExercises(updated);
   };
 
-  const cardioSuggestions = [
-    '15 min Tapis de course 12-5-30 (12% pente, 5 km/h)',
-    '12 min StairMaster fessiers tempo régulier',
-    '10 min Rameur fractionné 30s sprint / 30s récup',
-    '15 min Vélo elliptique pyramide résistances',
-    '15 min Marche en côte active 10% pente',
-    '12 min HIIT vélo d’appartement',
-  ];
-
-  const absSuggestions = [
-    'Circuit Gainage Global & Obliques 7 min (Planche + Commando)',
-    'Hollow Rock & Crunchs contrôlés 3 x 15 reps',
-    'Relevés de bassin suspendu & Chandelles 3 x 12 reps',
-    'Circuit Pilates Core : Deadbug, Bird-Dog & Vacuum',
-    'Russian Twists avec petit disque & Gainage latéral',
-  ];
-
-  const handleSelectFinisherType = (type: 'none' | 'cardio' | 'abs') => {
+  const handleSelectFinisherType = (type: 'none' | 'cardio' | 'abs' | 'pump') => {
     setFinisherType(type);
     if (type === 'none') {
       setFinisher('');
-    } else if (type === 'cardio' && !finisher) {
-      setFinisher(cardioSuggestions[0]);
-    } else if (type === 'abs' && !finisher) {
-      setFinisher(absSuggestions[0]);
+      setFinisherPresetId(undefined);
+    } else {
+      const catPresets = FINISHERS_CATALOG.filter((f) => f.category === type);
+      if (catPresets[0]) {
+        setFinisherPresetId(catPresets[0].id);
+        setFinisher(`${catPresets[0].name} — ${catPresets[0].summary}`);
+      }
     }
   };
 
@@ -502,18 +492,17 @@ export const WorkoutEditorModal: React.FC<WorkoutEditorModalProps> = ({
             )}
           </div>
 
-          {/* Finisher Optionnel : 3 choix explicites (Rien / Cardio / Abdos) */}
+          {/* Finisher Optionnel : 3 Catégories (Abdos & Gainage / Cardio & Brûle-graisse / Pump & Congestion) */}
           <div className="space-y-3 p-4 rounded-2xl bg-[#F2EFE9] border border-[#E6E2D8]">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-1.5 text-xs font-semibold text-[#3B0726]">
-                <Flame className="w-3.5 h-3.5 text-[#3B0726]" />
-                <span>Option Finisher : Sélectionnez votre choix</span>
+                <Flame className="w-3.5 h-3.5 text-[#EC4899]" />
+                <span>Module Finisher (3 à 8 min en fin de séance)</span>
               </div>
-              <span className="text-[10px] text-neutral-500">Cardio, Abdos ou Aucun</span>
+              <span className="text-[10px] text-neutral-500">Abdos, Cardio, Pump ou Aucun</span>
             </div>
 
-            {/* 3 boutons de sélection */}
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
               <button
                 type="button"
                 onClick={() => handleSelectFinisherType('none')}
@@ -523,19 +512,7 @@ export const WorkoutEditorModal: React.FC<WorkoutEditorModalProps> = ({
                     : 'bg-white text-neutral-700 hover:bg-[#F3E3F5] border border-[#E6E2D8]'
                 }`}
               >
-                Rien (Aucun)
-              </button>
-              <button
-                type="button"
-                onClick={() => handleSelectFinisherType('cardio')}
-                className={`py-2 px-3 rounded-xl text-xs font-semibold transition-all flex items-center justify-center gap-1.5 ${
-                  finisherType === 'cardio'
-                    ? 'bg-[#EC4899] text-white shadow-xs'
-                    : 'bg-white text-neutral-700 hover:bg-[#F3E3F5] border border-[#E6E2D8]'
-                }`}
-              >
-                <StreamlineIcon name="runner" className="w-3.5 h-3.5 shrink-0" />
-                <span>Cardio</span>
+                Aucun
               </button>
               <button
                 type="button"
@@ -547,69 +524,78 @@ export const WorkoutEditorModal: React.FC<WorkoutEditorModalProps> = ({
                 }`}
               >
                 <StreamlineIcon name="stretch" className="w-3.5 h-3.5 shrink-0" />
-                <span>Abdos</span>
+                <span>Abdos & Gainage</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => handleSelectFinisherType('cardio')}
+                className={`py-2 px-3 rounded-xl text-xs font-semibold transition-all flex items-center justify-center gap-1.5 ${
+                  finisherType === 'cardio'
+                    ? 'bg-[#EC4899] text-white shadow-xs'
+                    : 'bg-white text-neutral-700 hover:bg-[#F3E3F5] border border-[#E6E2D8]'
+                }`}
+              >
+                <StreamlineIcon name="runner" className="w-3.5 h-3.5 shrink-0" />
+                <span>Cardio & Sèche</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => handleSelectFinisherType('pump')}
+                className={`py-2 px-3 rounded-xl text-xs font-semibold transition-all flex items-center justify-center gap-1.5 ${
+                  finisherType === 'pump'
+                    ? 'bg-amber-500 text-slate-950 font-bold shadow-xs'
+                    : 'bg-white text-neutral-700 hover:bg-[#F3E3F5] border border-[#E6E2D8]'
+                }`}
+              >
+                <Flame className="w-3.5 h-3.5 shrink-0" />
+                <span>Pump & 100 Reps</span>
               </button>
             </div>
 
-            {/* If Cardio chosen */}
-            {finisherType === 'cardio' && (
+            {finisherType !== 'none' && (
               <div className="space-y-2 pt-1 animate-in fade-in">
                 <span className="text-[11px] font-semibold text-[#3B0726] block">
-                  Suggestions Cardio populaires :
+                  Choisissez votre Finisher interactif :
                 </span>
-                <div className="flex flex-wrap gap-1.5">
-                  {cardioSuggestions.map((c, i) => (
-                    <button
-                      key={i}
-                      type="button"
-                      onClick={() => setFinisher(c)}
-                      className={`px-2.5 py-1 rounded-full text-[10px] font-medium border transition-colors ${
-                        finisher === c
-                          ? 'bg-[#3B0726] text-white border-[#3B0726]'
-                          : 'bg-white text-neutral-700 border-[#E6E2D8] hover:bg-[#F3E3F5]'
-                      }`}
-                    >
-                      {c}
-                    </button>
-                  ))}
+                <div className="space-y-1.5">
+                  {FINISHERS_CATALOG.filter((f) => f.category === finisherType).map((preset) => {
+                    const isSelected = finisherPresetId === preset.id;
+                    return (
+                      <button
+                        key={preset.id}
+                        type="button"
+                        onClick={() => {
+                          setFinisherPresetId(preset.id);
+                          setFinisher(`${preset.name} — ${preset.summary}`);
+                        }}
+                        className={`w-full text-left p-2.5 rounded-xl border transition-all ${
+                          isSelected
+                            ? 'bg-[#3B0726] text-white border-[#3B0726]'
+                            : 'bg-white text-[#3B0726] border-[#E6E2D8] hover:bg-[#F3E3F5]'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-bold">{preset.name}</span>
+                          <span
+                            className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                              isSelected ? 'bg-[#EC4899] text-white' : 'bg-[#F3E3F5] text-[#831843]'
+                            }`}
+                          >
+                            {preset.durationLabel}
+                          </span>
+                        </div>
+                        <p className={`text-[10px] mt-0.5 ${isSelected ? 'text-pink-100' : 'text-neutral-600'}`}>
+                          {preset.summary}
+                        </p>
+                      </button>
+                    );
+                  })}
                 </div>
                 <input
                   type="text"
                   value={finisher}
                   onChange={(e) => setFinisher(e.target.value)}
-                  placeholder="Ou écrivez votre séance cardio sur-mesure..."
-                  className="w-full px-3 py-2 text-xs rounded-xl border border-[#E6E2D8] bg-white text-[#3B0726]"
-                />
-              </div>
-            )}
-
-            {/* If Abs chosen */}
-            {finisherType === 'abs' && (
-              <div className="space-y-2 pt-1 animate-in fade-in">
-                <span className="text-[11px] font-semibold text-[#3B0726] block">
-                  Suggestions Circuits Abdos & Gainage :
-                </span>
-                <div className="flex flex-wrap gap-1.5">
-                  {absSuggestions.map((a, i) => (
-                    <button
-                      key={i}
-                      type="button"
-                      onClick={() => setFinisher(a)}
-                      className={`px-2.5 py-1 rounded-full text-[10px] font-medium border transition-colors ${
-                        finisher === a
-                          ? 'bg-[#3B0726] text-white border-[#3B0726]'
-                          : 'bg-white text-neutral-700 border-[#E6E2D8] hover:bg-[#F3E3F5]'
-                      }`}
-                    >
-                      {a}
-                    </button>
-                  ))}
-                </div>
-                <input
-                  type="text"
-                  value={finisher}
-                  onChange={(e) => setFinisher(e.target.value)}
-                  placeholder="Ou écrivez votre circuit abdos personnalisé..."
+                  placeholder="Ou personnalisez la description de votre Finisher..."
                   className="w-full px-3 py-2 text-xs rounded-xl border border-[#E6E2D8] bg-white text-[#3B0726]"
                 />
               </div>
@@ -617,7 +603,7 @@ export const WorkoutEditorModal: React.FC<WorkoutEditorModalProps> = ({
 
             {finisherType === 'none' && (
               <p className="text-[11px] text-neutral-500 italic pt-1">
-                Aucun finisher sélectionné : focus total sur la musculation et la récupération.
+                Aucun finisher pré-sélectionné (un Finisher dynamique vous sera proposé en fin de séance).
               </p>
             )}
           </div>
@@ -685,6 +671,7 @@ export const WorkoutEditorModal: React.FC<WorkoutEditorModalProps> = ({
                 targetZone: exercises[0]?.category || 'lower-body',
                 exercises,
                 finisher: finisherType !== 'none' ? finisher : undefined,
+                finisherPresetId: finisherType !== 'none' ? finisherPresetId : undefined,
                 notes,
               });
               onClose();
@@ -715,6 +702,7 @@ export const WorkoutEditorModal: React.FC<WorkoutEditorModalProps> = ({
                 name,
                 exercises,
                 finisher: finisherType !== 'none' ? finisher : undefined,
+                finisherPresetId: finisherType !== 'none' ? finisherPresetId : undefined,
                 notes,
                 rating,
                 finisherType,

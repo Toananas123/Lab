@@ -13,9 +13,13 @@ import {
   ArrowDownToLine,
   Eye,
   EyeOff,
+  Flame,
+  TrendingUp,
+  Timer,
+  CheckCircle2,
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
-import { WorkoutExerciseItem, ExerciseSet, Exercise } from '../../types/fitness';
+import { WorkoutExerciseItem, ExerciseSet, Exercise, FinisherLog } from '../../types/fitness';
 import { useWorkout } from '../../context/WorkoutContext';
 import { useAuth } from '../../context/AuthContext';
 import { playRestCompleteSound } from '../../utils/audio';
@@ -23,7 +27,8 @@ import { getEquipmentBadge } from '../../utils/equipmentBadge';
 import { WarmupAndStretchingGuide } from './WarmupAndStretchingGuide';
 import { StreamlineIcon } from '../ui/StreamlineIcon';
 import { BottomSheet } from '../ui/BottomSheet';
-import { CARDIO_FINISHER_PRESETS, ABDOS_FINISHER_PRESETS } from '../planning/PlanningView';
+import { FINISHERS_CATALOG } from '../../data/programsAndFinishersData';
+import { FinisherTimerModal } from './FinisherTimerModal';
 import { MachineIllustration } from '../exercises/MachineIllustration';
 import { PersonalGearReminder } from '../common/PersonalGearReminder';
 
@@ -39,7 +44,9 @@ export const ActiveWorkoutView: React.FC<ActiveWorkoutViewProps> = ({ onFinishWo
     finishActiveWorkout,
     cancelActiveWorkout,
     getPreviousPerformance,
+    getProgramOverloadSuggestion,
     getPersonalRecords,
+    activeProgram,
     allExercises,
     favorites,
   } = useWorkout();
@@ -53,11 +60,26 @@ export const ActiveWorkoutView: React.FC<ActiveWorkoutViewProps> = ({ onFinishWo
   const [undoSnapshots, setUndoSnapshots] = useState<Record<string, WorkoutExerciseItem>>({});
   const [openMachinePreviewIds, setOpenMachinePreviewIds] = useState<Record<string, boolean>>({});
 
-  // 1-tap Finisher, Water, Rating & Notes directly accessible
-  const [finisherTypeChoice, setFinisherTypeChoice] = useState<'none' | 'cardio' | 'abs'>(
-    activeWorkout?.finisher ? 'cardio' : 'none'
+  // Finisher interactive state (supports planned finisher + dynamic hot suggestion at end of workout)
+  const initialPreset = activeWorkout?.finisherPresetId
+    ? FINISHERS_CATALOG.find((f) => f.id === activeWorkout.finisherPresetId)
+    : undefined;
+  const [finisherTypeChoice, setFinisherTypeChoice] = useState<'none' | 'cardio' | 'abs' | 'pump'>(
+    initialPreset ? initialPreset.category : activeWorkout?.finisher ? 'cardio' : 'none'
   );
-  const [finisherChoice, setFinisherChoice] = useState<string>(activeWorkout?.finisher || '');
+  const [finisherChoice, setFinisherChoice] = useState<string>(
+    initialPreset ? `${initialPreset.name} — ${initialPreset.summary}` : activeWorkout?.finisher || ''
+  );
+  const [selectedFinisherPresetId, setSelectedFinisherPresetId] = useState<string | undefined>(
+    activeWorkout?.finisherPresetId
+  );
+  const [completedFinisherLog, setCompletedFinisherLog] = useState<FinisherLog | undefined>(
+    activeWorkout?.finisherLog
+  );
+  const [showFinisherTimerModal, setShowFinisherTimerModal] = useState(false);
+  const [isHotFinisherSuggestion, setIsHotFinisherSuggestion] = useState(false);
+  const hasTriggeredHotSuggestionRef = useRef(false);
+
   const [notesInput, setNotesInput] = useState(activeWorkout?.notes || '');
   const [sessionRating, setSessionRating] = useState<number>(activeWorkout?.rating || 5);
 
@@ -73,6 +95,7 @@ export const ActiveWorkoutView: React.FC<ActiveWorkoutViewProps> = ({ onFinishWo
 
   const timerIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const workoutTimerRef = useRef<NodeJS.Timeout | null>(null);
+
 
   useEffect(() => {
     workoutTimerRef.current = setInterval(() => {
@@ -296,7 +319,17 @@ export const ActiveWorkoutView: React.FC<ActiveWorkoutViewProps> = ({ onFinishWo
     });
 
     if (isNowCompleted) {
-      handleStartRestTimer(targetExercise.restSeconds || profile?.defaultRestTime || 75);
+      // Check if ALL sets of ALL exercises are now completed to trigger the hot Finisher suggestion modal
+      const allWorkoutSetsDone = updatedExercises.every((ex) =>
+        ex.sets.every((s) => s.completed)
+      );
+      if (allWorkoutSetsDone && !hasTriggeredHotSuggestionRef.current && !completedFinisherLog) {
+        hasTriggeredHotSuggestionRef.current = true;
+        setIsHotFinisherSuggestion(true);
+        setShowFinisherTimerModal(true);
+      } else {
+        handleStartRestTimer(targetExercise.restSeconds || profile?.defaultRestTime || 75);
+      }
     }
   };
 
@@ -364,14 +397,18 @@ export const ActiveWorkoutView: React.FC<ActiveWorkoutViewProps> = ({ onFinishWo
     updateActiveWorkout({ ...activeWorkout, exercises: updatedExercises });
   };
 
-  const handleSelectFinisherOneTap = (type: 'none' | 'cardio' | 'abs') => {
+  const handleSelectFinisherOneTap = (type: 'none' | 'cardio' | 'abs' | 'pump') => {
     setFinisherTypeChoice(type);
     if (type === 'none') {
       setFinisherChoice('');
-    } else if (type === 'cardio') {
-      setFinisherChoice(CARDIO_FINISHER_PRESETS[0]);
-    } else if (type === 'abs') {
-      setFinisherChoice(ABDOS_FINISHER_PRESETS[0]);
+      setSelectedFinisherPresetId(undefined);
+    } else {
+      const catPresets = FINISHERS_CATALOG.filter((f) => f.category === type);
+      const first = catPresets[0];
+      if (first) {
+        setSelectedFinisherPresetId(first.id);
+        setFinisherChoice(`${first.name} — ${first.summary}`);
+      }
     }
   };
 
@@ -380,7 +417,8 @@ export const ActiveWorkoutView: React.FC<ActiveWorkoutViewProps> = ({ onFinishWo
       await finishActiveWorkout(
         notesInput,
         finisherTypeChoice !== 'none' ? finisherChoice : undefined,
-        sessionRating
+        sessionRating,
+        completedFinisherLog
       );
       confetti({
         particleCount: 70,
@@ -789,32 +827,80 @@ export const ActiveWorkoutView: React.FC<ActiveWorkoutViewProps> = ({ onFinishWo
                 </div>
               )}
 
-              {/* Minimalist previous performance reminder */}
-              {prevPerf && (
-                <div className="flex items-center justify-between gap-2 px-3 py-1.5 rounded-xl bg-white/[0.03] text-[11px] text-[#C29DB2]">
-                  <span>
-                    Dernière fois : <strong className="text-white">{prevPerf.weight} kg × {prevPerf.reps}</strong>
-                  </span>
-                  <div className="flex items-center gap-1.5">
-                    <button
-                      type="button"
-                      onClick={() => applyWeightToAllSets(exIdx, prevPerf.weight, prevPerf.reps)}
-                      className="text-[#EC4899] hover:underline font-bold"
-                    >
-                      Appliquer
-                    </button>
-                    {overloadWeight && (
-                      <button
-                        type="button"
-                        onClick={() => applyWeightToAllSets(exIdx, overloadWeight)}
-                        className="text-white bg-[#EC4899] px-2 py-0.5 rounded-md text-[10px] font-bold"
-                      >
-                        +{overloadWeight} kg
-                      </button>
+              {/* Algorithme de Surcharge Progressive & Historique Semaine Précédente */}
+              {(() => {
+                const overloadInfo = getProgramOverloadSuggestion(exerciseItem.exerciseId);
+                if (!prevPerf && !overloadInfo) return null;
+                return (
+                  <div className="p-3 rounded-2xl bg-gradient-to-r from-[#EC4899]/15 via-[#831843]/20 to-white/[0.03] border border-[#EC4899]/30 space-y-2">
+                    <div className="flex flex-wrap items-center justify-between gap-2 text-[11px]">
+                      <div className="flex items-center gap-1.5 text-[#FBCFE8]">
+                        <TrendingUp className="w-3.5 h-3.5 text-[#EC4899] shrink-0" />
+                        <span>
+                          {prevPerf ? (
+                            <>
+                              Semaine précédente ({prevPerf.date}) :{' '}
+                              <strong className="text-white">
+                                {prevPerf.weight} kg × {prevPerf.reps} reps
+                              </strong>
+                            </>
+                          ) : (
+                            <strong className="text-white">
+                              Surcharge Progressive — {activeProgram?.programTitle}
+                            </strong>
+                          )}
+                        </span>
+                      </div>
+                      {activeProgram && (
+                        <span className="px-2 py-0.5 rounded-full bg-[#EC4899]/25 text-[#FBCFE8] text-[10px] font-extrabold">
+                          Semaine {activeProgram.currentWeek}/{activeProgram.durationWeeks}
+                        </span>
+                      )}
+                    </div>
+
+                    {overloadInfo && (
+                      <div className="flex flex-wrap items-center justify-between gap-2 pt-1 border-t border-white/10">
+                        <span className="text-[11px] text-emerald-300 font-bold">
+                          💡 {overloadInfo.recommendationText}
+                        </span>
+                        <div className="flex items-center gap-1.5">
+                          {prevPerf && (
+                            <button
+                              type="button"
+                              onClick={() => applyWeightToAllSets(exIdx, prevPerf.weight, prevPerf.reps)}
+                              className="px-2.5 py-1 rounded-lg bg-white/10 hover:bg-white/20 text-white text-[10px] font-bold transition-colors"
+                            >
+                              Même charge ({prevPerf.weight} kg)
+                            </button>
+                          )}
+                          {overloadInfo.suggestedWeight > 0 && (
+                            <button
+                              type="button"
+                              onClick={() => applyWeightToAllSets(exIdx, overloadInfo.suggestedWeight)}
+                              className="px-2.5 py-1 rounded-lg bg-[#EC4899] hover:bg-pink-500 text-white text-[10px] font-extrabold transition-colors"
+                            >
+                              +2 kg ({overloadInfo.suggestedWeight} kg)
+                            </button>
+                          )}
+                          <button
+                            type="button"
+                            onClick={() =>
+                              applyWeightToAllSets(
+                                exIdx,
+                                prevPerf?.weight ?? exerciseItem.sets[0]?.targetWeight ?? 0,
+                                overloadInfo.suggestedReps
+                              )
+                            }
+                            className="px-2.5 py-1 rounded-lg bg-emerald-500/25 hover:bg-emerald-500/40 border border-emerald-400/40 text-emerald-200 text-[10px] font-extrabold transition-colors"
+                          >
+                            +2 reps ({overloadInfo.suggestedReps} reps)
+                          </button>
+                        </div>
+                      </div>
                     )}
                   </div>
-                </div>
-              )}
+                );
+              })()}
 
               {/* Sets Checklist with Clean Steppers */}
               <div className="space-y-2">
@@ -914,13 +1000,44 @@ export const ActiveWorkoutView: React.FC<ActiveWorkoutViewProps> = ({ onFinishWo
         })}
       </div>
 
-      {/* 1-Tap Finisher (Cardio / Abdos) & Session Rating Card (Épuré) */}
-      <div className="p-4 sm:p-5 rounded-[26px] bg-[#14030E] border border-white/8 space-y-3.5 text-white">
-        <div className="space-y-2">
-          <span className="font-compact text-[11px] font-bold text-[#C29DB2] uppercase tracking-wider block">
-            Finisher (optionnel)
-          </span>
-          <div className="grid grid-cols-3 gap-2">
+      {/* MODULE FINISHERS EN FIN DE SÉANCE (3 Catégories + Chrono Interactif) & Ressenti */}
+      <div className="p-4 sm:p-5 rounded-[26px] bg-[#14030E] border border-pink-500/25 space-y-4 text-white">
+        <div className="space-y-2.5">
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <Flame className="w-4 h-4 text-[#EC4899]" />
+              <span className="font-compact text-xs font-extrabold text-white uppercase tracking-wider">
+                Module Finisher (3 à 8 min)
+              </span>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                setIsHotFinisherSuggestion(false);
+                setShowFinisherTimerModal(true);
+              }}
+              className="px-3 py-1.5 rounded-full bg-gradient-to-r from-[#EC4899] to-[#831843] text-white text-[11px] font-extrabold flex items-center gap-1.5 shadow-md shadow-pink-500/20 hover:opacity-95"
+            >
+              <Timer className="w-3.5 h-3.5" />
+              <span>Ouvrir Chrono Finisher</span>
+            </button>
+          </div>
+
+          {completedFinisherLog && (
+            <div className="p-3 rounded-2xl bg-emerald-500/15 border border-emerald-400/40 flex items-center justify-between gap-2 text-xs">
+              <div className="flex items-center gap-2 text-emerald-300 font-bold">
+                <CheckCircle2 className="w-4 h-4 shrink-0" />
+                <span>Finisher validé : {finisherChoice}</span>
+              </div>
+              {completedFinisherLog.isNewRecord && (
+                <span className="px-2 py-0.5 rounded-full bg-amber-400 text-slate-950 text-[10px] font-black">
+                  NOUVEAU RECORD !
+                </span>
+              )}
+            </div>
+          )}
+
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
             <button
               type="button"
               onClick={() => handleSelectFinisherOneTap('none')}
@@ -934,6 +1051,18 @@ export const ActiveWorkoutView: React.FC<ActiveWorkoutViewProps> = ({ onFinishWo
             </button>
             <button
               type="button"
+              onClick={() => handleSelectFinisherOneTap('abs')}
+              className={`py-2 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 min-h-[40px] ${
+                finisherTypeChoice === 'abs'
+                  ? 'bg-[#831843] text-white border border-pink-400/40'
+                  : 'bg-white/5 text-[#A88096] hover:text-white'
+              }`}
+            >
+              <StreamlineIcon name="stretch" className="w-3.5 h-3.5 shrink-0" />
+              <span>Abdos & Gainage</span>
+            </button>
+            <button
+              type="button"
               onClick={() => handleSelectFinisherOneTap('cardio')}
               className={`py-2 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 min-h-[40px] ${
                 finisherTypeChoice === 'cardio'
@@ -942,40 +1071,67 @@ export const ActiveWorkoutView: React.FC<ActiveWorkoutViewProps> = ({ onFinishWo
               }`}
             >
               <StreamlineIcon name="runner" className="w-3.5 h-3.5 shrink-0" />
-              <span>Cardio</span>
+              <span>Cardio & Sèche</span>
             </button>
             <button
               type="button"
-              onClick={() => handleSelectFinisherOneTap('abs')}
+              onClick={() => handleSelectFinisherOneTap('pump')}
               className={`py-2 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 min-h-[40px] ${
-                finisherTypeChoice === 'abs'
-                  ? 'bg-[#831843] text-white'
+                finisherTypeChoice === 'pump'
+                  ? 'bg-amber-500 text-slate-950 font-extrabold'
                   : 'bg-white/5 text-[#A88096] hover:text-white'
               }`}
             >
-              <StreamlineIcon name="stretch" className="w-3.5 h-3.5 shrink-0" />
-              <span>Abdos</span>
+              <Flame className="w-3.5 h-3.5 shrink-0" />
+              <span>Pump & 100 Reps</span>
             </button>
           </div>
 
           {finisherTypeChoice !== 'none' && (
-            <div className="flex flex-wrap gap-1.5 pt-1">
-              {(finisherTypeChoice === 'cardio' ? CARDIO_FINISHER_PRESETS : ABDOS_FINISHER_PRESETS)
-                .slice(0, 5)
-                .map((preset) => (
-                  <button
-                    key={preset}
-                    type="button"
-                    onClick={() => setFinisherChoice(preset)}
-                    className={`px-3 py-1.5 rounded-full text-[11px] font-semibold transition-all ${
-                      finisherChoice === preset
-                        ? 'bg-[#EC4899] text-white'
-                        : 'bg-white/5 text-[#FDF2F8] hover:bg-white/10'
-                    }`}
-                  >
-                    {preset}
-                  </button>
-                ))}
+            <div className="space-y-2 pt-1">
+              <div className="grid grid-cols-1 gap-2">
+                {FINISHERS_CATALOG.filter((f) => f.category === finisherTypeChoice).map((preset) => {
+                  const isSelected = selectedFinisherPresetId === preset.id;
+                  return (
+                    <div
+                      key={preset.id}
+                      onClick={() => {
+                        setSelectedFinisherPresetId(preset.id);
+                        setFinisherChoice(`${preset.name} — ${preset.summary}`);
+                      }}
+                      className={`p-3 rounded-2xl border transition-all cursor-pointer flex items-center justify-between gap-3 ${
+                        isSelected
+                          ? 'bg-[#EC4899]/20 border-[#EC4899]'
+                          : 'bg-white/5 border-white/10 hover:bg-white/10'
+                      }`}
+                    >
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-extrabold text-white">{preset.name}</span>
+                          <span className="px-2 py-0.5 rounded-full bg-white/10 text-[10px] font-bold text-pink-200">
+                            {preset.durationLabel}
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-pink-200/75 mt-0.5">{preset.summary}</p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSelectedFinisherPresetId(preset.id);
+                          setFinisherChoice(`${preset.name} — ${preset.summary}`);
+                          setIsHotFinisherSuggestion(false);
+                          setShowFinisherTimerModal(true);
+                        }}
+                        className="px-3 py-2 rounded-xl bg-[#EC4899] hover:bg-pink-500 text-white text-xs font-extrabold shrink-0 flex items-center gap-1"
+                      >
+                        <Play className="w-3.5 h-3.5 fill-white" />
+                        <span>Lancer</span>
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           )}
         </div>
@@ -1093,19 +1249,48 @@ export const ActiveWorkoutView: React.FC<ActiveWorkoutViewProps> = ({ onFinishWo
           >
             Continuer ma séance
           </button>
-          <button
-            type="button"
-            onClick={() => {
-              cancelActiveWorkout();
-              setConfirmCancelOpen(false);
-              onExit();
-            }}
-            className="flex-1 py-3 rounded-full bg-[#831843] text-white font-bold text-xs min-h-[44px]"
-          >
-            Abandonner
-          </button>
-        </div>
-      </BottomSheet>
-    </div>
-  );
-};
+            <button
+              type="button"
+              onClick={() => {
+                cancelActiveWorkout();
+                setConfirmCancelOpen(false);
+                onExit();
+              }}
+              className="flex-1 py-3 rounded-full bg-[#831843] text-white font-bold text-xs min-h-[44px]"
+            >
+              Abandonner
+            </button>
+          </div>
+        </BottomSheet>
+
+        {/* Interactive Finisher Timer & Hot Suggestion Modal */}
+        <FinisherTimerModal
+          isOpen={showFinisherTimerModal}
+          initialPresetId={isHotFinisherSuggestion ? undefined : selectedFinisherPresetId}
+          isHotSuggestion={isHotFinisherSuggestion}
+          lastExerciseName={
+            activeWorkout.exercises[activeWorkout.exercises.length - 1]?.exerciseName
+          }
+          onClose={() => setShowFinisherTimerModal(false)}
+          onCompleteFinisher={(log, summaryText) => {
+            setCompletedFinisherLog(log);
+            setFinisherTypeChoice(log.category);
+            setSelectedFinisherPresetId(log.presetId);
+            setFinisherChoice(summaryText);
+            setShowFinisherTimerModal(false);
+            updateActiveWorkout({
+              ...activeWorkout,
+              finisher: summaryText,
+              finisherPresetId: log.presetId,
+              finisherLog: log,
+            });
+          }}
+          onSkipAndFinishWorkout={() => {
+            setShowFinisherTimerModal(false);
+            handleFinishSession();
+          }}
+        />
+      </div>
+    );
+  };
+

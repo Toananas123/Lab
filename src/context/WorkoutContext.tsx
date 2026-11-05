@@ -2,6 +2,7 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 import {
   collection,
   doc,
+  getDoc,
   getDocs,
   setDoc,
   deleteDoc,
@@ -17,11 +18,26 @@ import {
   BodyMeasurement,
   WeeklyPlanDay,
   WorkoutExerciseItem,
+  TrainingProgram,
+  UserActiveProgram,
+  FinisherPreset,
+  FinisherLog,
 } from '../types/fitness';
 import { DEFAULT_EXERCISES, STARTER_ROUTINES } from '../data/exercisesData';
+import { DEFAULT_PROGRAMS, FINISHERS_CATALOG } from '../data/programsAndFinishersData';
 
 const ACTIVE_WORKOUT_STORAGE_KEY = 'glow_up_lab_active_workout';
 const LOCAL_DATA_PREFIX = 'glow_up_lab_local_';
+
+export interface OverloadSuggestion {
+  previousWeight: number;
+  previousReps: number;
+  previousDate: string;
+  suggestedWeight: number;
+  suggestedReps: number;
+  recommendationText: string;
+  weekLabel: string;
+}
 
 interface WorkoutContextType {
   allExercises: Exercise[];
@@ -32,6 +48,10 @@ interface WorkoutContextType {
   activeWorkout: Workout | null;
   measurements: BodyMeasurement[];
   weeklyPlans: WeeklyPlanDay[];
+  programs: TrainingProgram[];
+  customPrograms: TrainingProgram[];
+  activeProgram: UserActiveProgram | null;
+  finishersCatalog: FinisherPreset[];
   loading: boolean;
   
   // Custom Exercises
@@ -48,9 +68,25 @@ interface WorkoutContextType {
   deleteRoutine: (id: string) => Promise<void>;
   
   // Active Workout
-  startWorkout: (workoutData: { name: string; exercises: WorkoutExerciseItem[]; finisher?: string; notes?: string; rating?: number; finisherType?: 'none' | 'cardio' | 'abs' }) => Workout;
+  startWorkout: (workoutData: {
+    name: string;
+    exercises: WorkoutExerciseItem[];
+    finisher?: string;
+    finisherPresetId?: string;
+    programId?: string;
+    programWeekNumber?: number;
+    programDayId?: string;
+    notes?: string;
+    rating?: number;
+    finisherType?: 'none' | 'cardio' | 'abs' | 'pump';
+  }) => Workout;
   updateActiveWorkout: (updated: Workout) => void;
-  finishActiveWorkout: (completedNotes?: string, finalFinisher?: string, rating?: number) => Promise<Workout>;
+  finishActiveWorkout: (
+    completedNotes?: string,
+    finalFinisher?: string,
+    rating?: number,
+    finisherLog?: FinisherLog
+  ) => Promise<Workout>;
   cancelActiveWorkout: () => void;
   
   // Historical Workouts
@@ -58,8 +94,17 @@ interface WorkoutContextType {
   updateWorkout: (id: string, updates: Partial<Workout>) => Promise<void>;
   duplicateWorkoutAsNew: (workout: Workout) => Workout;
   getPreviousPerformance: (exerciseId: string) => { weight: number; reps: number; date: string } | null;
+  getProgramOverloadSuggestion: (exerciseId: string) => OverloadSuggestion | null;
   getPersonalRecords: () => Record<string, { maxWeight: number; reps: number; date: string }>;
   
+  // Training Programs & Onboarding
+  createCustomProgram: (programData: Omit<TrainingProgram, 'id' | 'isCustom' | 'createdAt'>) => Promise<TrainingProgram>;
+  deleteCustomProgram: (id: string) => Promise<void>;
+  startProgram: (programId: string, preferredDays: number[], startDate: string) => Promise<void>;
+  stopActiveProgram: () => Promise<void>;
+  exportProgramCode: (program: TrainingProgram) => string;
+  importProgramFromCode: (inputStr: string) => Promise<TrainingProgram | null>;
+
   // Exercise Settings ("Mes réglages")
   exerciseSettings: Record<string, string>;
   updateExerciseSettings: (exerciseId: string, settings: string) => Promise<void>;
@@ -106,6 +151,7 @@ export const WorkoutProvider: React.FC<{ children: React.ReactNode }> = ({ child
       let activity: WeeklyPlanDay['activity'] = 'Repos';
       let finisherType: WeeklyPlanDay['finisherType'] = 'none';
       let finisher: string | undefined = undefined;
+      let finisherPresetId: string | undefined = undefined;
       let status: WeeklyPlanDay['status'] = 'rest';
 
       if (dayIndex === 1) { // Lundi
@@ -113,21 +159,24 @@ export const WorkoutProvider: React.FC<{ children: React.ReactNode }> = ({ child
         workoutName = 'Booty Sculpt & Hypertrophie';
         routineId = 'routine-glutes-focus';
         finisherType = 'cardio';
-        finisher = 'Marche inclinée Intermédiaire : Inclinaison 10 · Vitesse 4,5 · 30 min';
+        finisher = '12-5-30 Express (5 à 8 min)';
+        finisherPresetId = 'finisher-cardio-12-5-30-express';
         status = 'planned';
       } else if (dayIndex === 3) { // Mercredi
         activity = 'Séance Dos';
-        workoutName = 'Upper Body Glow & Dos en V';
-        routineId = 'routine-upper-sculpt';
+        workoutName = 'Dos & Silhouette V-Shape (Posture)';
+        routineId = 'routine-back-v-shape';
         finisherType = 'abs';
-        finisher = 'Circuit Abdos Debout avec Charge (3 tours)';
+        finisher = '30/15 Tabata Core (4 min)';
+        finisherPresetId = 'finisher-tabata-core-30-15';
         status = 'planned';
       } else if (dayIndex === 5) { // Vendredi
         activity = 'Séance Bas du corps';
-        workoutName = 'Séance Bas du corps & Circuit Abdos';
-        routineId = 'routine-abs-3x10-plank';
-        finisherType = 'abs';
-        finisher = 'Circuit Abdos 3x10 & Planche Lestée 60s';
+        workoutName = 'Chaîne Postérieure (Fessiers & Ischios)';
+        routineId = 'routine-posterior-chain';
+        finisherType = 'pump';
+        finisher = 'Challenge 100 Reps';
+        finisherPresetId = 'finisher-challenge-100-reps';
         status = 'planned';
       }
 
@@ -141,6 +190,7 @@ export const WorkoutProvider: React.FC<{ children: React.ReactNode }> = ({ child
         routineId,
         finisherType,
         finisher,
+        finisherPresetId,
         status,
       });
     });
@@ -177,9 +227,14 @@ export const WorkoutProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const [activeWorkout, setActiveWorkout] = useState<Workout | null>(null);
   const [measurements, setMeasurements] = useState<BodyMeasurement[]>([]);
   const [weeklyPlans, setWeeklyPlans] = useState<WeeklyPlanDay[]>(() => getDefaultWeeklyPlan());
+  const [customPrograms, setCustomPrograms] = useState<TrainingProgram[]>([]);
+  const [activeProgram, setActiveProgram] = useState<UserActiveProgram | null>(null);
   const [exerciseSettings, setExerciseSettings] = useState<Record<string, string>>({});
   const [sharedTemplateWorkout, setSharedTemplateWorkout] = useState<Workout | null>(null);
   const [loading, setLoading] = useState(true);
+
+  const programs: TrainingProgram[] = [...DEFAULT_PROGRAMS, ...customPrograms];
+  const finishersCatalog: FinisherPreset[] = FINISHERS_CATALOG;
 
   // Load active workout from local storage & check ?share= URL link on mount
   useEffect(() => {
@@ -199,7 +254,7 @@ export const WorkoutProvider: React.FC<{ children: React.ReactNode }> = ({ child
         } else {
           localStorage.removeItem(ACTIVE_WORKOUT_STORAGE_KEY);
         }
-      } catch (err) {
+      } catch {
         localStorage.removeItem(ACTIVE_WORKOUT_STORAGE_KEY);
       }
     }
@@ -276,6 +331,24 @@ export const WorkoutProvider: React.FC<{ children: React.ReactNode }> = ({ child
         setWeeklyPlans(getDefaultWeeklyPlan());
       }
 
+      const localCustomProgs = localStorage.getItem(`${LOCAL_DATA_PREFIX}programs_${currentUid}`);
+      if (localCustomProgs) {
+        try {
+          setCustomPrograms(JSON.parse(localCustomProgs));
+        } catch {
+          setCustomPrograms([]);
+        }
+      }
+
+      const localActiveProg = localStorage.getItem(`${LOCAL_DATA_PREFIX}active_program_${currentUid}`);
+      if (localActiveProg) {
+        try {
+          setActiveProgram(JSON.parse(localActiveProg));
+        } catch {
+          setActiveProgram(null);
+        }
+      }
+
       if (!user) {
         setLoading(false);
         return;
@@ -286,7 +359,7 @@ export const WorkoutProvider: React.FC<{ children: React.ReactNode }> = ({ child
         const exCol = collection(db, 'users', currentUid, 'exercises');
         const exSnap = await getDocs(exCol);
         const remoteCustom: Exercise[] = [];
-        exSnap.forEach((doc) => remoteCustom.push(doc.data() as Exercise));
+        exSnap.forEach((d) => remoteCustom.push(d.data() as Exercise));
         setCustomExercises(remoteCustom);
         localStorage.setItem(`${LOCAL_DATA_PREFIX}custom_${currentUid}`, JSON.stringify(remoteCustom));
 
@@ -294,7 +367,7 @@ export const WorkoutProvider: React.FC<{ children: React.ReactNode }> = ({ child
         const favCol = collection(db, 'users', currentUid, 'favorites');
         const favSnap = await getDocs(favCol);
         const remoteFavs: string[] = [];
-        favSnap.forEach((doc) => remoteFavs.push((doc.data() as { exerciseId: string }).exerciseId));
+        favSnap.forEach((d) => remoteFavs.push((d.data() as { exerciseId: string }).exerciseId));
         setFavorites(remoteFavs);
         localStorage.setItem(`${LOCAL_DATA_PREFIX}favs_${currentUid}`, JSON.stringify(remoteFavs));
 
@@ -302,10 +375,10 @@ export const WorkoutProvider: React.FC<{ children: React.ReactNode }> = ({ child
         const routineCol = collection(db, 'users', currentUid, 'routines');
         const routineSnap = await getDocs(routineCol);
         const remoteRoutines: Routine[] = [...STARTER_ROUTINES];
-        routineSnap.forEach((doc) => {
-          const r = doc.data() as Routine;
+        routineSnap.forEach((d) => {
+          const r = d.data() as Routine;
           const cleanRoutine = { ...r, name: stripLeadingEmojis(r.name) || r.name };
-          if (!remoteRoutines.some(existing => existing.id === cleanRoutine.id)) {
+          if (!remoteRoutines.some((existing) => existing.id === cleanRoutine.id)) {
             remoteRoutines.push(cleanRoutine);
           }
         });
@@ -317,7 +390,7 @@ export const WorkoutProvider: React.FC<{ children: React.ReactNode }> = ({ child
         const qWorkouts = query(workoutsCol, orderBy('date', 'desc'));
         const workoutSnap = await getDocs(qWorkouts);
         const remoteWorkouts: Workout[] = [];
-        workoutSnap.forEach((doc) => remoteWorkouts.push(doc.data() as Workout));
+        workoutSnap.forEach((d) => remoteWorkouts.push(d.data() as Workout));
         setWorkouts(remoteWorkouts);
         localStorage.setItem(`${LOCAL_DATA_PREFIX}workouts_${currentUid}`, JSON.stringify(remoteWorkouts));
 
@@ -326,16 +399,34 @@ export const WorkoutProvider: React.FC<{ children: React.ReactNode }> = ({ child
         const qMeas = query(measCol, orderBy('date', 'desc'));
         const measSnap = await getDocs(qMeas);
         const remoteMeas: BodyMeasurement[] = [];
-        measSnap.forEach((doc) => remoteMeas.push(doc.data() as BodyMeasurement));
+        measSnap.forEach((d) => remoteMeas.push(d.data() as BodyMeasurement));
         setMeasurements(remoteMeas);
         localStorage.setItem(`${LOCAL_DATA_PREFIX}measurements_${currentUid}`, JSON.stringify(remoteMeas));
+
+        // Fetch custom programs
+        const progCol = collection(db, 'users', currentUid, 'programs');
+        const progSnap = await getDocs(progCol);
+        const remoteProgs: TrainingProgram[] = [];
+        progSnap.forEach((d) => remoteProgs.push(d.data() as TrainingProgram));
+        setCustomPrograms(remoteProgs);
+        localStorage.setItem(`${LOCAL_DATA_PREFIX}programs_${currentUid}`, JSON.stringify(remoteProgs));
+
+        // Fetch active program from profile/active_program
+        const activeProgSnap = await getDoc(doc(db, 'users', currentUid, 'profile', 'active_program'));
+        if (activeProgSnap.exists()) {
+          const apData = activeProgSnap.data() as UserActiveProgram;
+          if (apData && apData.programId) {
+            setActiveProgram(apData);
+            localStorage.setItem(`${LOCAL_DATA_PREFIX}active_program_${currentUid}`, JSON.stringify(apData));
+          }
+        }
 
         // Fetch weekly plans
         const planCol = collection(db, 'users', currentUid, 'weekly_plans');
         const planSnap = await getDocs(planCol);
         if (!planSnap.empty) {
           const remotePlans: WeeklyPlanDay[] = [];
-          planSnap.forEach((doc) => remotePlans.push(doc.data() as WeeklyPlanDay));
+          planSnap.forEach((d) => remotePlans.push(d.data() as WeeklyPlanDay));
           const normalized = normalizeWeeklyPlan(remotePlans);
           setWeeklyPlans(normalized);
           localStorage.setItem(`${LOCAL_DATA_PREFIX}plans_${currentUid}`, JSON.stringify(normalized));
@@ -475,8 +566,32 @@ export const WorkoutProvider: React.FC<{ children: React.ReactNode }> = ({ child
   };
 
   // Active Workout Management
-  const startWorkout = (workoutData: { name: string; exercises: WorkoutExerciseItem[]; finisher?: string; notes?: string; rating?: number; finisherType?: 'none' | 'cardio' | 'abs' }): Workout => {
+  const startWorkout = (workoutData: {
+    name: string;
+    exercises: WorkoutExerciseItem[];
+    finisher?: string;
+    finisherPresetId?: string;
+    programId?: string;
+    programWeekNumber?: number;
+    programDayId?: string;
+    notes?: string;
+    rating?: number;
+    finisherType?: 'none' | 'cardio' | 'abs' | 'pump';
+  }): Workout => {
     const id = `workout_${Date.now()}`;
+    const todayDayOfWeek = new Date().getDay();
+    const todayPlan = weeklyPlans.find((d) => d.dayOfWeek === todayDayOfWeek);
+
+    const resolvedProgramId =
+      workoutData.programId ||
+      todayPlan?.programId ||
+      (activeProgram && !activeProgram.isCompleted ? activeProgram.programId : undefined);
+    const resolvedProgramWeek =
+      workoutData.programWeekNumber ||
+      todayPlan?.programWeekNumber ||
+      (activeProgram ? activeProgram.currentWeek : undefined);
+    const resolvedFinisherPresetId = workoutData.finisherPresetId || todayPlan?.finisherPresetId;
+
     const newWorkout: Workout = {
       id,
       userId: currentUid || 'guest',
@@ -485,6 +600,10 @@ export const WorkoutProvider: React.FC<{ children: React.ReactNode }> = ({ child
       status: 'in_progress',
       exercises: workoutData.exercises,
       finisher: workoutData.finisher,
+      finisherPresetId: resolvedFinisherPresetId,
+      programId: resolvedProgramId,
+      programWeekNumber: resolvedProgramWeek,
+      programDayId: workoutData.programDayId || todayPlan?.programDayId,
       notes: workoutData.notes,
       rating: workoutData.rating ?? 5,
       startedAt: new Date().toISOString(),
@@ -499,7 +618,12 @@ export const WorkoutProvider: React.FC<{ children: React.ReactNode }> = ({ child
     localStorage.setItem(ACTIVE_WORKOUT_STORAGE_KEY, JSON.stringify(updated));
   };
 
-  const finishActiveWorkout = async (completedNotes?: string, finalFinisher?: string, rating?: number): Promise<Workout> => {
+  const finishActiveWorkout = async (
+    completedNotes?: string,
+    finalFinisher?: string,
+    rating?: number,
+    finisherLog?: FinisherLog
+  ): Promise<Workout> => {
     if (!activeWorkout) throw new Error('Aucune séance active à terminer');
     
     // Calculate total duration in minutes
@@ -517,6 +641,7 @@ export const WorkoutProvider: React.FC<{ children: React.ReactNode }> = ({ child
       completedAt: new Date().toISOString(),
       notes: completedNotes !== undefined ? completedNotes : activeWorkout.notes,
       finisher: finalFinisher !== undefined ? finalFinisher : activeWorkout.finisher,
+      finisherLog: finisherLog !== undefined ? finisherLog : activeWorkout.finisherLog,
       rating: rating !== undefined ? rating : activeWorkout.rating,
     };
 
@@ -535,15 +660,57 @@ export const WorkoutProvider: React.FC<{ children: React.ReactNode }> = ({ child
     );
     setWeeklyPlans(updatedWeekly);
 
+    // Update Active Program progress if user has an active program
+    let updatedActiveProg: UserActiveProgram | null = activeProgram;
+    if (activeProgram && !activeProgram.isCompleted) {
+      const sessionVolumeKg = finishedWorkout.exercises.reduce((acc, ex) => {
+        const exVol = ex.sets.reduce((sAcc, s) => {
+          if (!s.completed) return sAcc;
+          const w = s.actualWeight ?? s.targetWeight ?? 0;
+          const r = s.actualReps ?? s.targetReps ?? 0;
+          return sAcc + w * r;
+        }, 0);
+        return acc + exVol;
+      }, 0);
+
+      const newCompletedCount = activeProgram.completedSessionCount + 1;
+      const totalPlanned = Math.max(1, activeProgram.totalSessionsPlanned);
+      const newPercent = Math.min(100, Math.round((newCompletedCount / totalPlanned) * 100));
+      const computedWeek = Math.min(
+        activeProgram.durationWeeks,
+        Math.max(1, Math.ceil(newCompletedCount / Math.max(1, activeProgram.sessionsPerWeek)))
+      );
+      const isNowCompleted = newCompletedCount >= totalPlanned;
+
+      updatedActiveProg = {
+        ...activeProgram,
+        completedSessionCount: newCompletedCount,
+        completedWorkoutIds: [...(activeProgram.completedWorkoutIds || []), finishedWorkout.id],
+        currentWeek: computedWeek,
+        progressPercent: newPercent,
+        totalVolumeKg: Math.round((activeProgram.totalVolumeKg || 0) + sessionVolumeKg),
+        isCompleted: isNowCompleted,
+        completedAt: isNowCompleted ? new Date().toISOString() : activeProgram.completedAt,
+        updatedAt: new Date().toISOString(),
+      };
+      setActiveProgram(updatedActiveProg);
+      if (currentUid) {
+        localStorage.setItem(`${LOCAL_DATA_PREFIX}active_program_${currentUid}`, JSON.stringify(updatedActiveProg));
+      }
+    }
+
     if (currentUid) {
       localStorage.setItem(`${LOCAL_DATA_PREFIX}workouts_${currentUid}`, JSON.stringify(updatedList));
-      localStorage.setItem(`${LOCAL_DATA_PREFIX}weekly_${currentUid}`, JSON.stringify(updatedWeekly));
+      localStorage.setItem(`${LOCAL_DATA_PREFIX}plans_${currentUid}`, JSON.stringify(updatedWeekly));
       if (user) {
         try {
           await setDoc(doc(db, 'users', currentUid, 'workouts', finishedWorkout.id), sanitizeForFirestore(finishedWorkout));
           const todayPlan = updatedWeekly.find((p) => p.dayOfWeek === todayDayOfWeek);
           if (todayPlan) {
             await setDoc(doc(db, 'users', currentUid, 'weekly_plans', `day_${todayDayOfWeek}`), sanitizeForFirestore(todayPlan));
+          }
+          if (updatedActiveProg) {
+            await setDoc(doc(db, 'users', currentUid, 'profile', 'active_program'), sanitizeForFirestore(updatedActiveProg));
           }
         } catch (err) {
           handleFirestoreError(err, OperationType.CREATE, `users/${currentUid}/workouts/${finishedWorkout.id}`);
@@ -604,10 +771,239 @@ export const WorkoutProvider: React.FC<{ children: React.ReactNode }> = ({ child
     }
   };
 
+  // ==========================================
+  // TRAINING PROGRAMS & PROGRESSIVE OVERLOAD
+  // ==========================================
+
+  const createCustomProgram = async (
+    programData: Omit<TrainingProgram, 'id' | 'isCustom' | 'createdAt'>
+  ): Promise<TrainingProgram> => {
+    const id = `prog_custom_${Date.now()}`;
+    const newProgram: TrainingProgram = {
+      ...programData,
+      id,
+      isCustom: true,
+      createdBy: profile?.displayName || 'Athlète GlowUp',
+      createdAt: new Date().toISOString(),
+    };
+    const updated = [newProgram, ...customPrograms];
+    setCustomPrograms(updated);
+    if (currentUid) {
+      localStorage.setItem(`${LOCAL_DATA_PREFIX}programs_${currentUid}`, JSON.stringify(updated));
+      if (user) {
+        try {
+          await setDoc(doc(db, 'users', currentUid, 'programs', id), sanitizeForFirestore(newProgram));
+        } catch (err) {
+          handleFirestoreError(err, OperationType.CREATE, `users/${currentUid}/programs/${id}`);
+        }
+      }
+    }
+    return newProgram;
+  };
+
+  const deleteCustomProgram = async (id: string) => {
+    const updated = customPrograms.filter((p) => p.id !== id);
+    setCustomPrograms(updated);
+    if (currentUid) {
+      localStorage.setItem(`${LOCAL_DATA_PREFIX}programs_${currentUid}`, JSON.stringify(updated));
+      if (user) {
+        try {
+          await deleteDoc(doc(db, 'users', currentUid, 'programs', id));
+        } catch (err) {
+          handleFirestoreError(err, OperationType.DELETE, `users/${currentUid}/programs/${id}`);
+        }
+      }
+    }
+  };
+
+  const exportProgramCode = (program: TrainingProgram): string => {
+    try {
+      const payload = {
+        type: 'GLOWUPLAB_PROGRAM_V1',
+        program: {
+          ...program,
+          isCustom: true,
+        },
+      };
+      return btoa(unescape(encodeURIComponent(JSON.stringify(payload))));
+    } catch {
+      return JSON.stringify(program);
+    }
+  };
+
+  const importProgramFromCode = async (inputStr: string): Promise<TrainingProgram | null> => {
+    try {
+      let clean = inputStr.trim();
+      const matchParam = clean.match(/[?&]program=([A-Za-z0-9+/=_-]+)/);
+      if (matchParam && matchParam[1]) {
+        clean = decodeURIComponent(matchParam[1]);
+      }
+      let parsed: unknown;
+      if (clean.startsWith('{')) {
+        parsed = JSON.parse(clean);
+      } else {
+        const decoded = decodeURIComponent(escape(atob(clean)));
+        parsed = JSON.parse(decoded);
+      }
+      const progObj =
+        parsed && typeof parsed === 'object' && 'program' in parsed
+          ? (parsed as { program: TrainingProgram }).program
+          : (parsed as TrainingProgram);
+
+      if (progObj && progObj.title && Array.isArray(progObj.weeks)) {
+        const imported = await createCustomProgram({
+          title: progObj.title,
+          subtitle: progObj.subtitle || 'Programme importé',
+          objective: progObj.objective || 'hypertrophy',
+          objectiveLabel: progObj.objectiveLabel || 'Prise de masse / Hypertrophie',
+          durationWeeks: progObj.durationWeeks || 4,
+          sessionsPerWeek: progObj.sessionsPerWeek || 3,
+          level: progObj.level || 'Intermédiaire',
+          coverImage:
+            progObj.coverImage ||
+            'https://images.unsplash.com/photo-1518611012118-696072aa579a?auto=format&fit=crop&w=900&q=80',
+          equipment: Array.isArray(progObj.equipment) ? progObj.equipment : ['Haltères'],
+          description: progObj.description || 'Programme personnalisé partagé sur GlowUpLab.',
+          coachTips: progObj.coachTips || [],
+          weeks: progObj.weeks,
+        });
+        return imported;
+      }
+    } catch (err) {
+      console.warn('Invalid program import code', err);
+    }
+    return null;
+  };
+
+  const startProgram = async (programId: string, preferredDays: number[], startDate: string) => {
+    const targetProg = programs.find((p) => p.id === programId);
+    if (!targetProg) return;
+
+    const latestMeas = measurements[0];
+    const initialSnap = latestMeas
+      ? {
+          weight: latestMeas.weight,
+          waist: latestMeas.waist,
+          hips: latestMeas.hips,
+          thighs: latestMeas.thighs,
+          arms: latestMeas.arms,
+          chest: latestMeas.chest,
+          date: latestMeas.date,
+        }
+      : undefined;
+
+    const newActive: UserActiveProgram = {
+      programId: targetProg.id,
+      programTitle: targetProg.title,
+      objective: targetProg.objective,
+      objectiveLabel: targetProg.objectiveLabel,
+      startDate,
+      preferredDays,
+      durationWeeks: targetProg.durationWeeks,
+      sessionsPerWeek: targetProg.sessionsPerWeek,
+      totalSessionsPlanned: targetProg.durationWeeks * targetProg.sessionsPerWeek,
+      completedSessionCount: 0,
+      completedWorkoutIds: [],
+      currentWeek: 1,
+      progressPercent: 0,
+      totalVolumeKg: 0,
+      initialMeasurements: initialSnap,
+      isCompleted: false,
+      updatedAt: new Date().toISOString(),
+    };
+
+    setActiveProgram(newActive);
+
+    // Synchronize the Weekly Planning calendar with Week 1 workouts on the user's preferredDays
+    const week1 = targetProg.weeks[0];
+    const trainingDaysTemplate = week1
+      ? week1.days.filter((d) => !d.isRest)
+      : [];
+
+    // Order weekdays Lundi(1)..Samedi(6), Dimanche(0)
+    const weekOrder = [1, 2, 3, 4, 5, 6, 0];
+    const sortedPreferred = weekOrder.filter((dayNum) => preferredDays.includes(dayNum));
+
+    const basePlans = normalizeWeeklyPlan(weeklyPlans);
+    const syncedPlans: WeeklyPlanDay[] = basePlans.map((dayPlan) => {
+      const prefIndex = sortedPreferred.indexOf(dayPlan.dayOfWeek);
+      if (prefIndex !== -1 && trainingDaysTemplate.length > 0) {
+        const assignedTemplate = trainingDaysTemplate[prefIndex % trainingDaysTemplate.length];
+        const linkedFinisher = assignedTemplate.finisherPresetId
+          ? FINISHERS_CATALOG.find((f) => f.id === assignedTemplate.finisherPresetId)
+          : undefined;
+
+        return sanitizeForFirestore({
+          ...dayPlan,
+          activity: assignedTemplate.activityType || 'Musculation',
+          activities: [assignedTemplate.activityType || 'Musculation'],
+          routineId: assignedTemplate.routineId,
+          workoutName: assignedTemplate.workoutTitle || assignedTemplate.label,
+          targetZone: assignedTemplate.targetZone || 'lower-body',
+          finisherType: linkedFinisher ? linkedFinisher.category : 'none',
+          finisher: linkedFinisher ? `${linkedFinisher.name} — ${linkedFinisher.summary}` : undefined,
+          finisherPresetId: assignedTemplate.finisherPresetId,
+          programId: targetProg.id,
+          programWeekNumber: 1,
+          programDayId: assignedTemplate.id,
+          status: 'planned' as const,
+          notes: `Programme ${targetProg.title} (Semaine 1/${targetProg.durationWeeks})`,
+        });
+      } else {
+        return sanitizeForFirestore({
+          ...dayPlan,
+          activity: 'Repos' as const,
+          activities: ['Repos' as const],
+          routineId: undefined,
+          workoutName: 'Repos & Récupération (Programme)',
+          finisherType: 'none' as const,
+          finisher: undefined,
+          finisherPresetId: undefined,
+          programId: targetProg.id,
+          programWeekNumber: 1,
+          status: 'rest' as const,
+        });
+      }
+    });
+
+    setWeeklyPlans(syncedPlans);
+
+    if (currentUid) {
+      localStorage.setItem(`${LOCAL_DATA_PREFIX}active_program_${currentUid}`, JSON.stringify(newActive));
+      localStorage.setItem(`${LOCAL_DATA_PREFIX}plans_${currentUid}`, JSON.stringify(syncedPlans));
+      if (user) {
+        try {
+          await setDoc(doc(db, 'users', currentUid, 'profile', 'active_program'), sanitizeForFirestore(newActive));
+          for (const day of syncedPlans) {
+            await setDoc(
+              doc(db, 'users', currentUid, 'weekly_plans', `day_${day.dayOfWeek}`),
+              sanitizeForFirestore(day)
+            );
+          }
+        } catch (err) {
+          handleFirestoreError(err, OperationType.UPDATE, `users/${currentUid}/profile/active_program`);
+        }
+      }
+    }
+  };
+
+  const stopActiveProgram = async () => {
+    setActiveProgram(null);
+    if (currentUid) {
+      localStorage.removeItem(`${LOCAL_DATA_PREFIX}active_program_${currentUid}`);
+      if (user) {
+        try {
+          await deleteDoc(doc(db, 'users', currentUid, 'profile', 'active_program'));
+        } catch {
+          // ignore
+        }
+      }
+    }
+  };
+
   const loadSharedWorkout = (inputStr: string): boolean => {
     try {
       let clean = inputStr.trim();
-      // If user pasted a full URL or text containing ?share=...
       const shareMatch = clean.match(/[?&]share=([A-Za-z0-9+/=_-]+)/);
       if (shareMatch && shareMatch[1]) {
         clean = decodeURIComponent(shareMatch[1]);
@@ -650,7 +1046,6 @@ export const WorkoutProvider: React.FC<{ children: React.ReactNode }> = ({ child
   };
 
   const duplicateWorkoutAsNew = (workout: Workout): Workout => {
-    // Clones the exercises structure but resets completion states for a new live session
     const clonedExercises: WorkoutExerciseItem[] = workout.exercises.map((ex, exIdx) => ({
       ...ex,
       id: `ex_${Date.now()}_${exIdx}`,
@@ -667,19 +1062,18 @@ export const WorkoutProvider: React.FC<{ children: React.ReactNode }> = ({ child
       name: `${workout.name} (Copie)`,
       exercises: clonedExercises,
       finisher: workout.finisher,
+      finisherPresetId: workout.finisherPresetId,
       notes: workout.notes,
     });
   };
 
   // Performance Memory & PR Calculations
   const getPreviousPerformance = (exerciseId: string): { weight: number; reps: number; date: string } | null => {
-    // Scan completed workouts from newest to oldest
     for (const w of workouts) {
       if (w.status !== 'completed') continue;
       const matchingEx = w.exercises.find((e) => e.exerciseId === exerciseId);
       if (matchingEx) {
-        // Find best or last completed set with weight
-        const validSets = matchingEx.sets.filter((s) => s.completed && (s.actualWeight !== undefined || s.targetWeight > 0));
+        const validSets = matchingEx.sets.filter((s) => s.completed && (s.actualWeight !== undefined || s.targetWeight > 0 || s.targetReps > 0));
         if (validSets.length > 0) {
           const lastSet = validSets[validSets.length - 1];
           return {
@@ -690,6 +1084,57 @@ export const WorkoutProvider: React.FC<{ children: React.ReactNode }> = ({ child
         }
       }
     }
+    return null;
+  };
+
+  const getProgramOverloadSuggestion = (exerciseId: string): OverloadSuggestion | null => {
+    const prev = getPreviousPerformance(exerciseId);
+    const currentWeek = activeProgram?.currentWeek || 2;
+    const prevWeekNum = Math.max(1, currentWeek - 1);
+
+    if (prev) {
+      const isWeighted = prev.weight > 0;
+      const suggestedWeight = isWeighted ? Number((prev.weight + 2).toFixed(1)) : 0;
+      const suggestedReps = prev.reps + 2;
+      const weekLabel = activeProgram
+        ? `par rapport à la Semaine ${prevWeekNum}`
+        : `par rapport au ${prev.date}`;
+      const recommendationText = isWeighted
+        ? `+2 kg recommandés (${suggestedWeight} kg) ou +1 à 2 répétitions ${weekLabel}`
+        : `+2 répétitions recommandées (${suggestedReps} reps) ${weekLabel}`;
+
+      return {
+        previousWeight: prev.weight,
+        previousReps: prev.reps,
+        previousDate: prev.date,
+        suggestedWeight,
+        suggestedReps,
+        recommendationText,
+        weekLabel,
+      };
+    }
+
+    // If user is on an active program (Week >= 1) and has no history for this exercise yet, provide a smart baseline overload cue
+    if (activeProgram) {
+      const matchingEx = activeWorkout?.exercises.find((e) => e.exerciseId === exerciseId);
+      const baseWeight = matchingEx?.sets[0]?.targetWeight ?? 0;
+      const baseReps = matchingEx?.sets[0]?.targetReps ?? 10;
+      const suggestedWeight = baseWeight > 0 ? baseWeight + 2 : 0;
+      const suggestedReps = baseReps + 1;
+      return {
+        previousWeight: baseWeight,
+        previousReps: baseReps,
+        previousDate: activeProgram.startDate,
+        suggestedWeight,
+        suggestedReps,
+        recommendationText:
+          baseWeight > 0
+            ? `Surcharge Programme (Sem. ${activeProgram.currentWeek}/${activeProgram.durationWeeks}) : visez +2 kg (${suggestedWeight} kg) ou +1 à 2 reps si la dernière série est fluide`
+            : `Surcharge Programme (Sem. ${activeProgram.currentWeek}/${activeProgram.durationWeeks}) : visez +2 répétitions par rapport à la cible`,
+        weekLabel: `Semaine ${activeProgram.currentWeek}`,
+      };
+    }
+
     return null;
   };
 
@@ -780,7 +1225,7 @@ export const WorkoutProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const exportAllDataJSON = (): string => {
     const exportBundle = {
       app: 'Glow Up Lab',
-      version: '1.0',
+      version: '1.1',
       exportedAt: new Date().toISOString(),
       profile,
       customExercises,
@@ -789,6 +1234,8 @@ export const WorkoutProvider: React.FC<{ children: React.ReactNode }> = ({ child
       workouts,
       measurements,
       weeklyPlans,
+      customPrograms,
+      activeProgram,
     };
     return JSON.stringify(exportBundle, null, 2);
   };
@@ -831,6 +1278,8 @@ export const WorkoutProvider: React.FC<{ children: React.ReactNode }> = ({ child
       if (Array.isArray(data.workouts)) setWorkouts(data.workouts);
       if (Array.isArray(data.measurements)) setMeasurements(data.measurements);
       if (Array.isArray(data.weeklyPlans)) setWeeklyPlans(data.weeklyPlans);
+      if (Array.isArray(data.customPrograms)) setCustomPrograms(data.customPrograms);
+      if (data.activeProgram) setActiveProgram(data.activeProgram);
 
       if (currentUid) {
         if (data.customExercises) localStorage.setItem(`${LOCAL_DATA_PREFIX}custom_${currentUid}`, JSON.stringify(data.customExercises));
@@ -839,10 +1288,12 @@ export const WorkoutProvider: React.FC<{ children: React.ReactNode }> = ({ child
         if (data.workouts) localStorage.setItem(`${LOCAL_DATA_PREFIX}workouts_${currentUid}`, JSON.stringify(data.workouts));
         if (data.measurements) localStorage.setItem(`${LOCAL_DATA_PREFIX}measurements_${currentUid}`, JSON.stringify(data.measurements));
         if (data.weeklyPlans) localStorage.setItem(`${LOCAL_DATA_PREFIX}plans_${currentUid}`, JSON.stringify(data.weeklyPlans));
+        if (data.customPrograms) localStorage.setItem(`${LOCAL_DATA_PREFIX}programs_${currentUid}`, JSON.stringify(data.customPrograms));
+        if (data.activeProgram) localStorage.setItem(`${LOCAL_DATA_PREFIX}active_program_${currentUid}`, JSON.stringify(data.activeProgram));
       }
 
       return { success: true, message: 'Données restaurées avec succès !' };
-    } catch (err) {
+    } catch {
       return { success: false, message: 'Erreur lors de la lecture du fichier JSON.' };
     }
   };
@@ -858,6 +1309,10 @@ export const WorkoutProvider: React.FC<{ children: React.ReactNode }> = ({ child
         activeWorkout,
         measurements,
         weeklyPlans,
+        programs,
+        customPrograms,
+        activeProgram,
+        finishersCatalog,
         loading,
         addCustomExercise,
         deleteCustomExercise,
@@ -874,7 +1329,14 @@ export const WorkoutProvider: React.FC<{ children: React.ReactNode }> = ({ child
         updateWorkout,
         duplicateWorkoutAsNew,
         getPreviousPerformance,
+        getProgramOverloadSuggestion,
         getPersonalRecords,
+        createCustomProgram,
+        deleteCustomProgram,
+        startProgram,
+        stopActiveProgram,
+        exportProgramCode,
+        importProgramFromCode,
         exerciseSettings,
         updateExerciseSettings,
         sharedTemplateWorkout,
@@ -899,3 +1361,4 @@ export const useWorkout = () => {
   if (!context) throw new Error('useWorkout must be used within a WorkoutProvider');
   return context;
 };
+
