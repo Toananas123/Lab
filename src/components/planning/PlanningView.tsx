@@ -4,6 +4,9 @@ import {
   Check,
   ChevronLeft,
   ChevronRight,
+  Sparkles,
+  RotateCcw,
+  Flame,
 } from 'lucide-react';
 import { useWorkout } from '../../context/WorkoutContext';
 import {
@@ -12,6 +15,7 @@ import {
   ActivityType,
   PLANNING_ACTIVITIES,
 } from '../../types/fitness';
+import { ABDOS_CIRCUITS, CARDIO_CIRCUITS } from '../../data/exercisesData';
 import { StreamlineIcon, StreamlineIconName, getActivityStreamlineIcon } from '../ui/StreamlineIcon';
 import { BottomSheet } from '../ui/BottomSheet';
 
@@ -44,7 +48,7 @@ export const ACTIVITY_CONFIG: Record<
     icon: 'weightlifter',
     colorClass: 'bg-[#FCE7F3] text-[#831843] border-[#FBCFE8]',
     defaultSession: 'Séance Bas du corps : Quads, Ischios & Presse',
-    defaultRoutineId: 'routine-glutes-focus',
+    defaultRoutineId: 'routine-lower-complete',
   },
   'Séance Fessiers': {
     label: 'Séance Fessiers',
@@ -53,18 +57,39 @@ export const ACTIVITY_CONFIG: Record<
     defaultSession: 'Booty Sculpt : Hip Thrust, Kickback & Abduction',
     defaultRoutineId: 'routine-glutes-focus',
   },
+  'Séance Dos': {
+    label: 'Séance Dos',
+    icon: 'dumbbell',
+    colorClass: 'bg-[#FCE7F3] text-[#831843] border-[#FBCFE8]',
+    defaultSession: 'Dos Dessiné sans l’Élargir (Ordre 1-2-3-4)',
+    defaultRoutineId: 'routine-back-sculpt-no-widen',
+  },
+  'Séance Dos / Pecs': {
+    label: 'Séance Dos / Pecs',
+    icon: 'dumbbell',
+    colorClass: 'bg-[#FCE7F3] text-[#831843] border-[#FBCFE8]',
+    defaultSession: 'Combo Dos / Pecs (Upper Body Dessiné & Galbe)',
+    defaultRoutineId: 'routine-dos-pecs-antagonist',
+  },
+  'Séance Pecs / Bras': {
+    label: 'Séance Pecs / Bras',
+    icon: 'biceps',
+    colorClass: 'bg-[#FDF2F8] text-[#831843] border-[#FBCFE8]',
+    defaultSession: 'Combo Pecs / Bras (Buste Tonique & Bras Fermes)',
+    defaultRoutineId: 'routine-pecs-arms-push',
+  },
+  'Séance Pecs': {
+    label: 'Séance Pecs',
+    icon: 'dumbbell',
+    colorClass: 'bg-[#FCE7F3] text-[#831843] border-[#FBCFE8]',
+    defaultSession: 'Focus Pecs & Maintien du Buste (4 exos)',
+    defaultRoutineId: 'routine-pecs-sculpt',
+  },
   'Séance Bras': {
     label: 'Séance Bras',
     icon: 'biceps',
     colorClass: 'bg-[#FDF2F8] text-[#831843] border-[#FBCFE8]',
     defaultSession: 'Séance Bras & Épaules Galbées',
-    defaultRoutineId: 'routine-upper-sculpt',
-  },
-  'Séance Dos': {
-    label: 'Séance Dos',
-    icon: 'dumbbell',
-    colorClass: 'bg-[#FCE7F3] text-[#831843] border-[#FBCFE8]',
-    defaultSession: 'Séance Dos en V : Tirage Vertical & Rowing',
     defaultRoutineId: 'routine-upper-sculpt',
   },
   Repos: {
@@ -95,14 +120,14 @@ export const ACTIVITY_CONFIG: Record<
     label: 'Cardio',
     icon: 'runner',
     colorClass: 'bg-[#FCE7F3] text-[#831843] border-[#FBCFE8]',
-    defaultSession: 'Marche inclinée (Débutant / Intermédiaire / Confirmée)',
+    defaultSession: 'Marche inclinée 12-5-30 ou StairMaster',
     defaultRoutineId: 'routine-cardio-incline-walk',
   },
   Abdos: {
     label: 'Abdos',
     icon: 'stretch',
     colorClass: 'bg-[#FDF2F8] text-[#831843] border-[#FBCFE8]',
-    defaultSession: 'Circuit Abdos Debout ou Tapis',
+    defaultSession: 'Circuit Abdos & Gainage',
     defaultRoutineId: 'routine-abs-standing-weighted',
   },
   Autre: {
@@ -120,18 +145,125 @@ export const ACTIVITY_CONFIG: Record<
 };
 
 export const CARDIO_FINISHER_PRESETS = [
+  ...CARDIO_CIRCUITS.map(
+    (c) => `${c.name.replace(/^\d+\.\s*/, '')} (${c.machine} · ${c.durationMinutes} min)`
+  ),
   'Marche inclinée Débutant : Inclinaison 6 · Vitesse 4,5 · 20 min',
   'Marche inclinée Intermédiaire : Inclinaison 10 · Vitesse 4,5 · 30 min',
-  'Marche inclinée Confirmée : Inclinaison 12 · Vitesse 5 · 30 min',
-  'Escalier (StairMaster) : 15 min rythme régulier',
-  'Rameur : 10 min fractionné (40s effort / 20s récup)',
+  'Marche inclinée Confirmée 12-5-30 : Inclinaison 12 · Vitesse 5 · 30 min',
 ];
 
 export const ABDOS_FINISHER_PRESETS = [
-  'Circuit Abdos Debout avec Charge (3 tours)',
-  'Circuit Abdos 3x10 & Planche Lestée 60s',
-  'Circuit Abdos 3x20 Over-Unders & Hollow Hold',
-  'Circuit Abdos Lesté 3x12',
+  ...ABDOS_CIRCUITS.map(
+    (c) => `${c.name.replace(/^\d+\.\s*/, '')} (${c.durationMinutes} min · ${c.focus})`
+  ),
+  'Stomach Vacuum (5 x 20s) + Planche active 60s',
+];
+
+interface ProgramPreset {
+  id: string;
+  title: string;
+  subtitle: string;
+  badge: string;
+  days: Record<
+    number,
+    {
+      activity: ActivityType;
+      workoutName?: string;
+      routineId?: string;
+      finisherType?: 'none' | 'cardio' | 'abs';
+      finisher?: string;
+    }
+  >;
+}
+
+const PROGRAM_PRESETS: ProgramPreset[] = [
+  {
+    id: 'split-3j-sculpt',
+    title: 'Split 3 Jours : Fessiers · Dos (1-2-3-4) · Pecs/Bras',
+    subtitle: 'Lundi Bas du corps, Mercredi Dos Dessiné, Vendredi Pecs & Bras',
+    badge: '3 séances / sem',
+    days: {
+      1: {
+        activity: 'Séance Fessiers',
+        workoutName: 'Focus Fessiers Galbe & Volume (Ordre 1-2-3-4)',
+        routineId: 'routine-glutes-focus',
+        finisherType: 'abs',
+        finisher: ABDOS_FINISHER_PRESETS[0],
+      },
+      2: { activity: 'Repos' },
+      3: {
+        activity: 'Séance Dos',
+        workoutName: 'Dos Dessiné sans l’Élargir (Ordre 1-2-3-4)',
+        routineId: 'routine-back-sculpt-no-widen',
+        finisherType: 'cardio',
+        finisher: CARDIO_FINISHER_PRESETS[0],
+      },
+      4: { activity: 'Repos' },
+      5: {
+        activity: 'Séance Pecs / Bras',
+        workoutName: 'Séance Pecs / Bras (Buste Tonique & Bras Fermes)',
+        routineId: 'routine-pecs-arms-push',
+        finisherType: 'abs',
+        finisher: ABDOS_FINISHER_PRESETS[1],
+      },
+      6: { activity: 'Repos' },
+      0: { activity: 'Repos' },
+    },
+  },
+  {
+    id: 'split-4j-combos',
+    title: 'Split 4 Jours : 2 Bas du corps + Dos/Pecs + Pecs/Bras',
+    subtitle: 'Lundi Fessiers, Mardi Dos/Pecs, Jeudi Jambes, Vendredi Pecs/Bras',
+    badge: '4 séances / sem',
+    days: {
+      1: {
+        activity: 'Séance Fessiers',
+        workoutName: 'Focus Fessiers Galbe & Volume',
+        routineId: 'routine-glutes-focus',
+        finisherType: 'abs',
+        finisher: ABDOS_FINISHER_PRESETS[0],
+      },
+      2: {
+        activity: 'Séance Dos / Pecs',
+        workoutName: 'Séance Dos / Pecs (Upper Body Dessiné & Galbe)',
+        routineId: 'routine-dos-pecs-antagonist',
+        finisherType: 'cardio',
+        finisher: CARDIO_FINISHER_PRESETS[0],
+      },
+      3: { activity: 'Repos' },
+      4: {
+        activity: 'Séance Bas du corps',
+        workoutName: 'Bas du Corps Complet & Galbe',
+        routineId: 'routine-lower-complete',
+        finisherType: 'none',
+      },
+      5: {
+        activity: 'Séance Pecs / Bras',
+        workoutName: 'Séance Pecs / Bras (Buste Tonique & Bras Fermes)',
+        routineId: 'routine-pecs-arms-push',
+        finisherType: 'abs',
+        finisher: ABDOS_FINISHER_PRESETS[2],
+      },
+      6: { activity: 'Repos' },
+      0: { activity: 'Repos' },
+    },
+  },
+  {
+    id: 'free-mode',
+    title: 'Mode Libre (Sans programme fixe)',
+    subtitle: 'Remet tous les jours en libre / repos : tu lances tes séances quand tu veux !',
+    badge: 'Zéro contrainte',
+    days: {
+      1: { activity: 'Repos' },
+      2: { activity: 'Repos' },
+      3: { activity: 'Repos' },
+      4: { activity: 'Repos' },
+      5: { activity: 'Repos' },
+      6: { activity: 'Repos' },
+      0: { activity: 'Repos' },
+    },
+  },
 ];
 
 export const PlanningView: React.FC<PlanningViewProps> = ({ onStartActiveMode }) => {
@@ -161,9 +293,11 @@ export const PlanningView: React.FC<PlanningViewProps> = ({ onStartActiveMode })
   const [selectedActivities, setSelectedActivities] = useState<ActivityType[]>(['Séance Bas du corps']);
   const [selectedRoutineId, setSelectedRoutineId] = useState<string>('');
   const [customWorkoutName, setCustomWorkoutName] = useState<string>('');
-  const [finisherType, setFinisherType] = useState<'none' | 'cardio' | 'abs' | 'pump'>('none');
+  const [finisherType, setFinisherType] = useState<'none' | 'cardio' | 'abs'>('none');
   const [finisherText, setFinisherText] = useState<string>('');
   const [dayStatus, setDayStatus] = useState<WeeklyPlanDay['status']>('planned');
+  const [presetToast, setPresetToast] = useState<string | null>(null);
+  const [isApplyingPreset, setIsApplyingPreset] = useState(false);
 
   // Monthly calendar state
   const [calendarDate, setCalendarDate] = useState(new Date());
@@ -184,6 +318,30 @@ export const PlanningView: React.FC<PlanningViewProps> = ({ onStartActiveMode })
     workoutsByDate[w.date].maxRating = Math.max(workoutsByDate[w.date].maxRating, w.rating || 4);
     workoutsByDate[w.date].names.push(w.name);
   });
+
+  const handleApplyProgramPreset = async (preset: ProgramPreset) => {
+    if (isApplyingPreset) return;
+    setIsApplyingPreset(true);
+    try {
+      for (const tmpl of WEEK_DAYS_TEMPLATE) {
+        const dayCfg = preset.days[tmpl.dayOfWeek] || { activity: 'Repos' as ActivityType };
+        const isRest = dayCfg.activity === 'Repos';
+        await updateWeeklyPlanDay(tmpl.dayOfWeek, {
+          activity: dayCfg.activity,
+          activities: [dayCfg.activity],
+          workoutName: isRest ? undefined : dayCfg.workoutName,
+          routineId: isRest ? undefined : dayCfg.routineId,
+          finisherType: isRest ? 'none' : dayCfg.finisherType || 'none',
+          finisher: isRest ? undefined : dayCfg.finisher,
+          status: isRest ? 'rest' : 'planned',
+        });
+      }
+      setPresetToast(`✨ « ${preset.title} » appliqué à ta semaine !`);
+      setTimeout(() => setPresetToast(null), 3500);
+    } finally {
+      setIsApplyingPreset(false);
+    }
+  };
 
   const handleOpenEdit = (day: WeeklyPlanDay) => {
     setEditingDay(day);
@@ -273,10 +431,6 @@ export const PlanningView: React.FC<PlanningViewProps> = ({ onStartActiveMode })
         name: day.workoutName || targetRoutine.name,
         exercises: clonedExercises,
         finisher: day.finisher || targetRoutine.finisher,
-        finisherPresetId: day.finisherPresetId || targetRoutine.finisherPresetId,
-        programId: day.programId,
-        programWeekNumber: day.programWeekNumber,
-        programDayId: day.programDayId,
       });
       onStartActiveMode();
     }
@@ -292,12 +446,34 @@ export const PlanningView: React.FC<PlanningViewProps> = ({ onStartActiveMode })
 
   return (
     <div className="space-y-4 pb-12 animate-in fade-in duration-150">
-      {/* 1. Large Bold Header */}
-      <div className="flex items-center justify-between pt-1">
-        <h1 className="text-3xl sm:text-4xl font-display font-bold tracking-tight text-[#2B091C]">
-          Planning
-        </h1>
+      {/* 1. Header */}
+      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-2 pt-1">
+        <div>
+          <span className="font-compact text-[11px] font-semibold uppercase tracking-wider text-[#831843] block">
+            À la carte ou structuré · 100 % modulable
+          </span>
+          <h1 className="text-3xl sm:text-4xl font-display font-bold tracking-tight text-[#2B091C]">
+            Planning & Rythme
+          </h1>
+        </div>
+        {activeDaysCount > 0 && (
+          <button
+            type="button"
+            onClick={() => handleApplyProgramPreset(PROGRAM_PRESETS[2])}
+            className="self-start sm:self-auto px-3.5 py-2 rounded-full bg-[#F6EDF2] hover:bg-[#FCE7F3] text-[#831843] text-xs font-bold flex items-center gap-1.5 transition-colors"
+          >
+            <RotateCcw className="w-3.5 h-3.5" />
+            <span>Passer en Mode Libre (vider la semaine)</span>
+          </button>
+        )}
       </div>
+
+      {presetToast && (
+        <div className="p-3.5 rounded-2xl bg-[#FCE7F3] border border-[#FBCFE8] text-[#831843] text-xs font-bold flex items-center gap-2 animate-in fade-in">
+          <Check className="w-4 h-4 text-[#831843] shrink-0" />
+          <span>{presetToast}</span>
+        </div>
+      )}
 
       {/* 2. Clean Inline Tabs (Semaine / Calendrier) */}
       <div className="flex items-center gap-6 border-b border-[#F1E4EC]">
@@ -317,7 +493,7 @@ export const PlanningView: React.FC<PlanningViewProps> = ({ onStartActiveMode })
                 : 'bg-[#F6EDF2] text-[#8C6D7E]'
             }`}
           >
-            {activeDaysCount}j
+            {activeDaysCount === 0 ? 'Libre' : `${activeDaysCount}j`}
           </span>
         </button>
 
@@ -329,7 +505,7 @@ export const PlanningView: React.FC<PlanningViewProps> = ({ onStartActiveMode })
               : 'border-transparent font-medium text-[#8C6D7E] hover:text-[#2B091C]'
           }`}
         >
-          <span>Calendrier mensuel</span>
+          <span>Calendrier d’assiduité</span>
           <span
             className={`px-1.5 py-0.5 rounded-full text-[11px] font-bold tabular-nums ${
               viewTab === 'month'
@@ -342,95 +518,143 @@ export const PlanningView: React.FC<PlanningViewProps> = ({ onStartActiveMode })
         </button>
       </div>
 
-      {/* View 1: Weekly Clean Cards Stack (Exact Reference Image Card Anatomy) */}
+      {/* View 1: Weekly Clean Cards + 1-Click Templates */}
       {viewTab === 'week' && (
-        <section className="space-y-2.5">
-          {orderedDays.map((day) => {
-            const acts: ActivityType[] =
-              day.activities && day.activities.length > 0
-                ? day.activities
-                : [day.activity || 'Repos'];
-            const primaryAct = acts[0] || 'Repos';
-            const isRest = primaryAct === 'Repos';
-            const isCompleted = day.status === 'completed';
+        <div className="space-y-4">
+          {/* 1-Click Weekly Templates */}
+          <div className="p-4 rounded-[26px] bg-grainy-pink border border-[#F472B6]/35 space-y-2.5">
+            <div className="flex items-center justify-between">
+              <span className="font-display font-bold text-xs sm:text-sm text-[#2B091C] flex items-center gap-1.5">
+                <Sparkles className="w-4 h-4 text-[#831843]" />
+                <span>Modèles de semaine en 1 clic (ou personnalise jour par jour) :</span>
+              </span>
+            </div>
 
-            return (
-              <div
-                key={day.dayOfWeek}
-                onClick={() => handleOpenEdit(day)}
-                className="p-3.5 sm:p-4 rounded-[26px] bg-[#F6EDF2] hover:bg-[#F1E2EA] transition-all cursor-pointer flex items-center justify-between gap-3.5 active:scale-99"
-              >
-                {/* Left White Icon Box + Day & Activity Info */}
-                <div className="flex items-center gap-3.5 min-w-0 flex-1">
-                  <div className="w-14 h-14 rounded-2xl bg-white shadow-2xs flex items-center justify-center text-[#831843] shrink-0">
-                    <StreamlineIcon name={getActivityStreamlineIcon(primaryAct)} className="w-6 h-6" />
-                  </div>
-
-                  <div className="min-w-0 flex-1 space-y-1">
-                    <h3 className="font-display font-semibold text-[15px] text-[#2B091C] leading-snug truncate">
-                      {day.dayName}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+              {PROGRAM_PRESETS.map((preset) => (
+                <button
+                  key={preset.id}
+                  type="button"
+                  disabled={isApplyingPreset}
+                  onClick={() => handleApplyProgramPreset(preset)}
+                  className="p-3 rounded-2xl bg-white/90 hover:bg-white border border-white text-left flex flex-col justify-between gap-2 transition-all active:scale-99 shadow-2xs"
+                >
+                  <div className="space-y-1">
+                    <span className="inline-block px-2 py-0.5 rounded-full bg-[#FCE7F3] text-[#831843] text-[10px] font-bold">
+                      {preset.badge}
+                    </span>
+                    <h3 className="font-display font-bold text-xs text-[#2B091C] leading-snug">
+                      {preset.title}
                     </h3>
+                    <p className="text-[10px] text-[#7A616F] leading-relaxed">
+                      {preset.subtitle}
+                    </p>
+                  </div>
+                  <span className="text-[11px] font-bold text-[#831843]">
+                    Appliquer →
+                  </span>
+                </button>
+              ))}
+            </div>
+          </div>
 
-                    <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-[#7A616F]">
-                      <span className="inline-flex items-center gap-1.5 font-medium text-[#831843]">
-                        <span
-                          className={`w-2 h-2 rounded-full ${
-                            isCompleted
-                              ? 'bg-emerald-500'
-                              : isRest
-                              ? 'bg-[#C8B2BF]'
-                              : 'bg-[#EC4899]'
-                          }`}
-                        />
-                        <span>{acts.join(' + ')}</span>
-                      </span>
+          {/* 7 Days Stack */}
+          <section className="space-y-2.5">
+            {orderedDays.map((day) => {
+              const acts: ActivityType[] =
+                day.activities && day.activities.length > 0
+                  ? day.activities
+                  : [day.activity || 'Repos'];
+              const primaryAct = acts[0] || 'Repos';
+              const isRest = primaryAct === 'Repos';
+              const isCompleted = day.status === 'completed';
 
-                      {day.finisherType && day.finisherType !== 'none' && (
-                        <>
-                          <span>·</span>
-                          <span>+ {day.finisherType === 'cardio' ? 'Cardio' : 'Abdos'}</span>
-                        </>
-                      )}
+              return (
+                <div
+                  key={day.dayOfWeek}
+                  onClick={() => handleOpenEdit(day)}
+                  className="p-3.5 sm:p-4 rounded-[26px] bg-[#F6EDF2] hover:bg-[#F1E2EA] transition-all cursor-pointer flex items-center justify-between gap-3.5 active:scale-99"
+                >
+                  <div className="flex items-center gap-3.5 min-w-0 flex-1">
+                    <div className="w-14 h-14 rounded-2xl bg-white shadow-2xs flex items-center justify-center text-[#831843] shrink-0">
+                      <StreamlineIcon name={getActivityStreamlineIcon(primaryAct)} className="w-6 h-6" />
+                    </div>
+
+                    <div className="min-w-0 flex-1 space-y-1">
+                      <div className="flex items-center gap-2">
+                        <h3 className="font-display font-semibold text-[15px] text-[#2B091C] leading-snug truncate">
+                          {day.dayName}
+                        </h3>
+                        {day.workoutName && !isRest && (
+                          <span className="text-[11px] text-[#7A616F] truncate hidden sm:inline">
+                            · {day.workoutName}
+                          </span>
+                        )}
+                      </div>
+
+                      <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-[#7A616F]">
+                        <span className="inline-flex items-center gap-1.5 font-medium text-[#831843]">
+                          <span
+                            className={`w-2 h-2 rounded-full ${
+                              isCompleted
+                                ? 'bg-emerald-500'
+                                : isRest
+                                ? 'bg-[#C8B2BF]'
+                                : 'bg-[#EC4899]'
+                            }`}
+                          />
+                          <span>{isRest ? 'Jour libre / Repos' : acts.join(' + ')}</span>
+                        </span>
+
+                        {day.finisherType && day.finisherType !== 'none' && (
+                          <>
+                            <span>·</span>
+                            <span className="truncate max-w-[200px]">
+                              + {day.finisher || (day.finisherType === 'cardio' ? 'Cardio' : 'Abdos')}
+                            </span>
+                          </>
+                        )}
+                      </div>
                     </div>
                   </div>
+
+                  {/* Right Actions */}
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    {!isRest && (
+                      <>
+                        <button
+                          type="button"
+                          onClick={(e) => handleToggleDayComplete(day, e)}
+                          className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors ${
+                            isCompleted
+                              ? 'bg-emerald-500 text-white'
+                              : 'bg-white text-[#8C6D7E] hover:text-[#831843]'
+                          }`}
+                          title="Marquer comme fait"
+                        >
+                          <Check className="w-4 h-4" />
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={(e) => handleLaunchPlannedWorkout(day, e)}
+                          className="w-8 h-8 rounded-full bg-white text-[#831843] flex items-center justify-center shadow-2xs"
+                          title="Démarrer la séance"
+                        >
+                          <Play className="w-3.5 h-3.5 fill-[#831843]" />
+                        </button>
+                      </>
+                    )}
+
+                    <span className="w-8 h-8 rounded-full bg-white text-[#831843] flex items-center justify-center shadow-2xs">
+                      <ChevronRight className="w-4 h-4" />
+                    </span>
+                  </div>
                 </div>
-
-                {/* Right Actions */}
-                <div className="flex items-center gap-1.5 shrink-0">
-                  {!isRest && (
-                    <>
-                      <button
-                        type="button"
-                        onClick={(e) => handleToggleDayComplete(day, e)}
-                        className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors ${
-                          isCompleted
-                            ? 'bg-emerald-500 text-white'
-                            : 'bg-white text-[#8C6D7E] hover:text-[#831843]'
-                        }`}
-                        title="Marquer comme fait"
-                      >
-                        <Check className="w-4 h-4" />
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={(e) => handleLaunchPlannedWorkout(day, e)}
-                        className="w-8 h-8 rounded-full bg-white text-[#831843] flex items-center justify-center shadow-2xs"
-                        title="Démarrer la séance"
-                      >
-                        <Play className="w-3.5 h-3.5 fill-[#831843]" />
-                      </button>
-                    </>
-                  )}
-
-                  <span className="w-8 h-8 rounded-full bg-white text-[#831843] flex items-center justify-center shadow-2xs">
-                    <ChevronRight className="w-4 h-4" />
-                  </span>
-                </div>
-              </div>
-            );
-          })}
-        </section>
+              );
+            })}
+          </section>
+        </div>
       )}
 
       {/* View 2: Monthly Calendar */}
@@ -483,10 +707,7 @@ export const PlanningView: React.FC<PlanningViewProps> = ({ onStartActiveMode })
               const isToday = new Date().toISOString().split('T')[0] === dateStr;
 
               return (
-                <div
-                  key={`cal-${dayNum}`}
-                  className="flex items-center justify-center"
-                >
+                <div key={`cal-${dayNum}`} className="flex items-center justify-center">
                   <div
                     className={`w-10 h-10 rounded-full flex items-center justify-center text-xs tabular-nums ${
                       dayWorkout
@@ -505,19 +726,19 @@ export const PlanningView: React.FC<PlanningViewProps> = ({ onStartActiveMode })
         </section>
       )}
 
-      {/* BottomSheet: Edit Day Activities */}
+      {/* BottomSheet: Edit Day Activities & Finisher Circuits */}
       <BottomSheet
         isOpen={!!editingDay}
         onClose={() => setEditingDay(null)}
         title={editingDay ? editingDay.dayName : 'Planifier le jour'}
-        subtitle="Sélectionne ton activité pour ce jour"
+        subtitle="Sélectionne ta séance (Dos/Pecs, Pecs/Bras, Bas du corps...) et ton circuit Finisher"
         footer={
           <button
             type="button"
             onClick={handleSaveDay}
             className="w-full py-3.5 rounded-full bg-[#831843] text-white font-bold text-xs min-h-[48px]"
           >
-            Enregistrer
+            Enregistrer ce jour
           </button>
         }
       >
@@ -540,7 +761,9 @@ export const PlanningView: React.FC<PlanningViewProps> = ({ onStartActiveMode })
                     <span className="flex items-center gap-2 min-w-0">
                       <StreamlineIcon
                         name={getActivityStreamlineIcon(act)}
-                        className={`w-4 h-4 shrink-0 ${isSelected ? 'text-[#FBCFE8]' : 'text-[#831843]'}`}
+                        className={`w-4 h-4 shrink-0 ${
+                          isSelected ? 'text-[#FBCFE8]' : 'text-[#831843]'
+                        }`}
                       />
                       <span className="truncate">{act}</span>
                     </span>
@@ -551,36 +774,74 @@ export const PlanningView: React.FC<PlanningViewProps> = ({ onStartActiveMode })
             </div>
 
             {!selectedActivities.includes('Repos') && (
-              <div className="space-y-2.5 pt-2">
-                <label className="block font-bold text-[#2B091C] text-xs">
-                  Finisher (optionnel)
-                </label>
-                <div className="grid grid-cols-3 gap-2">
-                  {(
-                    [
-                      { id: 'none', label: 'Aucun' },
-                      { id: 'cardio', label: 'Cardio' },
-                      { id: 'abs', label: 'Abdos' },
-                    ] as const
-                  ).map((opt) => (
-                    <button
-                      key={opt.id}
-                      type="button"
-                      onClick={() => {
-                        setFinisherType(opt.id);
-                        if (opt.id === 'none') setFinisherText('');
-                        if (opt.id === 'cardio' && !finisherText) setFinisherText(CARDIO_FINISHER_PRESETS[0]);
-                        if (opt.id === 'abs' && !finisherText) setFinisherText(ABDOS_FINISHER_PRESETS[0]);
-                      }}
-                      className={`py-2.5 px-3 rounded-2xl text-xs font-bold ${
-                        finisherType === opt.id
-                          ? 'bg-[#831843] text-white'
-                          : 'bg-[#F6EDF2] text-[#7A616F]'
-                      }`}
+              <div className="space-y-3 pt-2 border-t border-[#F1E4EC]">
+                <div>
+                  <label className="block font-bold text-[#2B091C] text-xs mb-1.5">
+                    Routine associée (optionnel)
+                  </label>
+                  <select
+                    value={selectedRoutineId}
+                    onChange={(e) => setSelectedRoutineId(e.target.value)}
+                    className="w-full px-3.5 py-2.5 rounded-2xl bg-[#F6EDF2] text-xs font-bold text-[#2B091C]"
+                  >
+                    <option value="">Séance automatique selon l’activité choisie</option>
+                    {routines.map((r) => (
+                      <option key={r.id} value={r.id}>
+                        {r.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="block font-bold text-[#2B091C] text-xs flex items-center gap-1.5">
+                    <Flame className="w-3.5 h-3.5 text-[#EC4899]" />
+                    <span>Circuit Finisher (Abdos ou Cardio)</span>
+                  </label>
+                  <div className="grid grid-cols-3 gap-2">
+                    {(
+                      [
+                        { id: 'none', label: 'Aucun' },
+                        { id: 'abs', label: 'Circuit Abdos' },
+                        { id: 'cardio', label: 'Circuit Cardio' },
+                      ] as const
+                    ).map((opt) => (
+                      <button
+                        key={opt.id}
+                        type="button"
+                        onClick={() => {
+                          setFinisherType(opt.id);
+                          if (opt.id === 'none') setFinisherText('');
+                          if (opt.id === 'cardio') setFinisherText(CARDIO_FINISHER_PRESETS[0]);
+                          if (opt.id === 'abs') setFinisherText(ABDOS_FINISHER_PRESETS[0]);
+                        }}
+                        className={`py-2.5 px-3 rounded-2xl text-xs font-bold ${
+                          finisherType === opt.id
+                            ? 'bg-[#831843] text-white'
+                            : 'bg-[#F6EDF2] text-[#7A616F]'
+                        }`}
+                      >
+                        {opt.label}
+                      </button>
+                    ))}
+                  </div>
+
+                  {finisherType !== 'none' && (
+                    <select
+                      value={finisherText}
+                      onChange={(e) => setFinisherText(e.target.value)}
+                      className="w-full px-3.5 py-2.5 rounded-2xl bg-[#FCE7F3]/70 text-xs font-bold text-[#831843]"
                     >
-                      {opt.label}
-                    </button>
-                  ))}
+                      {(finisherType === 'abs'
+                        ? ABDOS_FINISHER_PRESETS
+                        : CARDIO_FINISHER_PRESETS
+                      ).map((preset, idx) => (
+                        <option key={idx} value={preset}>
+                          {preset}
+                        </option>
+                      ))}
+                    </select>
+                  )}
                 </div>
               </div>
             )}

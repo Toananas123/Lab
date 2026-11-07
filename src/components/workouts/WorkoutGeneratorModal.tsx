@@ -15,6 +15,21 @@ interface WorkoutGeneratorModalProps {
   onSaveAsRoutine: (routine: { name: string; targetZone: string; exercises: WorkoutExerciseItem[]; finisher?: string; notes?: string }) => void;
 }
 
+type GeneratorZoneId =
+  | 'glutes'
+  | 'lower'
+  | 'back_sculpt_order'
+  | 'dos_pecs'
+  | 'pecs_bras'
+  | 'pecs'
+  | 'posterior'
+  | 'quads_adductors'
+  | 'back'
+  | 'arms'
+  | 'fullbody'
+  | 'abs'
+  | 'cardio';
+
 export const WorkoutGeneratorModal: React.FC<WorkoutGeneratorModalProps> = ({
   isOpen,
   onClose,
@@ -23,9 +38,7 @@ export const WorkoutGeneratorModal: React.FC<WorkoutGeneratorModalProps> = ({
 }) => {
   const { allExercises, favorites, getPreviousPerformance } = useWorkout();
 
-  const [selectedZone, setSelectedZone] = useState<
-    'glutes' | 'lower' | 'posterior' | 'quads_adductors' | 'back' | 'back_thick' | 'arms' | 'fullbody' | 'abs' | 'cardio'
-  >('glutes');
+  const [selectedZone, setSelectedZone] = useState<GeneratorZoneId>('back_sculpt_order');
   const [selectedCardioIndex, setSelectedCardioIndex] = useState(0);
   const [selectedAbdoIndex, setSelectedAbdoIndex] = useState(0);
 
@@ -37,21 +50,94 @@ export const WorkoutGeneratorModal: React.FC<WorkoutGeneratorModalProps> = ({
 
   if (!isOpen) return null;
 
-  const zones: { id: string; label: string; desc: string; icon: StreamlineIconName }[] = [
-    { id: 'glutes', label: 'Fessiers uniquement (Booty Focus)', desc: 'Hip thrust, kickback poulie, abduction & fentes bulgares', icon: 'kettlebell' },
-    { id: 'lower', label: 'Bas du corps complet (Équilibre)', desc: 'Presse 45°, RDL, hack squat & leg curl', icon: 'kettlebell' },
-    { id: 'abs', label: 'Circuits Abdos & Gainage (8 circuits)', desc: 'Debout avec charge, Planche lestée 60s, Over-Unders, 360°, Vacuum...', icon: 'stretch' },
-    { id: 'cardio', label: 'Circuits Cardio Guidés (11 séances)', desc: 'Marche inclinée 12-5-30, StairMaster, Rameur, Elliptique, HIIT...', icon: 'runner' },
-    { id: 'posterior', label: 'Chaîne postérieure (Fessiers & Ischios)', desc: 'RDL haltères, hip thrust, leg curl assis & banc lombaires', icon: 'kettlebell' },
-    { id: 'quads_adductors', label: 'Quads Sculpt & Adducteurs Fermes', desc: 'Presse à cuisses, machine adducteurs, leg extension & squat sumo', icon: 'kettlebell' },
-    { id: 'back', label: 'Dos & Silhouette V-Shape', desc: 'Tirage vertical poitrine, pull-over corde, seated row & face pulls', icon: 'dumbbell' },
-    { id: 'back_thick', label: 'Dos Épais & Posture Altière', desc: 'T-Bar row, chest-supported row, tirage prise neutre & face pulls', icon: 'dumbbell' },
-    { id: 'arms', label: 'Épaules Galbées & Bras Toniques', desc: 'Élévations latérales, développé militaire, triceps corde & curl incliné', icon: 'biceps' },
-    { id: 'fullbody', label: 'Full Body Glow & Tonique', desc: 'Séance complète 4 mouvements polyarticulaires majeurs', icon: 'weightlifter' },
+  const zones: { id: GeneratorZoneId; label: string; desc: string; icon: StreamlineIconName }[] = [
+    {
+      id: 'back_sculpt_order',
+      label: 'Dos Dessiné sans l’Élargir (Ordre 1-2-3-4)',
+      desc: '1. Milieu du dos · 2. Grand dorsal · 3. Arrière d’épaule · 4. Lombaires (Back Extension)',
+      icon: 'dumbbell',
+    },
+    {
+      id: 'dos_pecs',
+      label: 'Séance Dos / Pecs (Upper Body Antagoniste)',
+      desc: 'Combo haut du corps : 2 exos Dos + 2 exos Pecs pour une posture sculptée',
+      icon: 'dumbbell',
+    },
+    {
+      id: 'pecs_bras',
+      label: 'Séance Pecs / Bras (Buste Tonique & Bras Fermes)',
+      desc: 'Combo Push & Galbe : 2 exos Pecs + 2 exos Bras & Épaules',
+      icon: 'biceps',
+    },
+    {
+      id: 'pecs',
+      label: 'Focus Pecs & Maintien du Buste',
+      desc: 'Développé incliné, Chest Press, Pec-Deck Butterfly & Poulie vis-à-vis',
+      icon: 'dumbbell',
+    },
+    {
+      id: 'glutes',
+      label: 'Fessiers uniquement (Booty Focus)',
+      desc: 'Hip thrust, kickback poulie, abduction & fentes bulgares',
+      icon: 'kettlebell',
+    },
+    {
+      id: 'lower',
+      label: 'Bas du corps complet (Ordre 1-2-3-4)',
+      desc: 'Polyarticulaire lourd, unilatéral, ischios/quads & isolation fessiers',
+      icon: 'kettlebell',
+    },
+    {
+      id: 'abs',
+      label: 'Circuits Abdos & Gainage (8 circuits)',
+      desc: 'Debout avec charge, Planche lestée 60s, Over-Unders, 360°, Vacuum...',
+      icon: 'stretch',
+    },
+    {
+      id: 'cardio',
+      label: 'Circuits Cardio Guidés (11 séances)',
+      desc: 'Marche inclinée 12-5-30, StairMaster, Rameur, Elliptique, HIIT...',
+      icon: 'runner',
+    },
+    {
+      id: 'posterior',
+      label: 'Chaîne postérieure (Fessiers & Ischios)',
+      desc: 'RDL haltères, hip thrust, leg curl assis & banc lombaires',
+      icon: 'kettlebell',
+    },
+    {
+      id: 'quads_adductors',
+      label: 'Quads Sculpt & Adducteurs Fermes',
+      desc: 'Presse à cuisses, machine adducteurs, leg extension & squat sumo',
+      icon: 'kettlebell',
+    },
+    {
+      id: 'arms',
+      label: 'Épaules Galbées & Bras Toniques',
+      desc: 'Élévations latérales, développé militaire, triceps corde & curl incliné',
+      icon: 'biceps',
+    },
+    {
+      id: 'fullbody',
+      label: 'Full Body Glow & Tonique',
+      desc: 'Séance complète 4 mouvements polyarticulaires majeurs',
+      icon: 'weightlifter',
+    },
   ];
 
-  const generateWorkout = (zoneId: typeof selectedZone) => {
-    // Special handling for Abdos & Cardio circuits so the exact chosen circuit is generated
+  const pickOne = (pool: Exercise[], fallback: Exercise): Exercise => {
+    if (pool.length === 0) return fallback;
+    const sorted = [...pool].sort((a, b) => {
+      const aFav = favorites.includes(a.id);
+      const bFav = favorites.includes(b.id);
+      if (aFav && !bFav) return Math.random() < 0.7 ? -1 : 1;
+      if (!aFav && bFav) return Math.random() < 0.7 ? 1 : -1;
+      return 0.5 - Math.random();
+    });
+    return sorted[0];
+  };
+
+  const generateWorkout = (zoneId: GeneratorZoneId) => {
     if (zoneId === 'abs') {
       const circuit = ABDOS_CIRCUITS[selectedAbdoIndex] || ABDOS_CIRCUITS[0];
       const abdoItems: WorkoutExerciseItem[] = circuit.exercises.map((ex, idx) => {
@@ -103,7 +189,11 @@ export const WorkoutGeneratorModal: React.FC<WorkoutGeneratorModalProps> = ({
       return;
     }
 
-    const isLower = zoneId === 'glutes' || zoneId === 'lower' || zoneId === 'posterior' || zoneId === 'quads_adductors';
+    const isLower =
+      zoneId === 'glutes' ||
+      zoneId === 'lower' ||
+      zoneId === 'posterior' ||
+      zoneId === 'quads_adductors';
 
     let workoutName = '';
     let defaultFinisher = '';
@@ -118,7 +208,7 @@ export const WorkoutGeneratorModal: React.FC<WorkoutGeneratorModalProps> = ({
         defaultFinisher = 'Leg Extension tempo brûlure (2 x 15 reps)';
       } else if (zoneId === 'posterior') {
         workoutName = 'Chaîne Postérieure (Fessiers & Ischios)';
-        defaultFinisher = 'Hyperextensions au banc 45° (3 x 15 reps)';
+        defaultFinisher = 'Back Extension au banc 45° (3 x 15 reps)';
       } else if (zoneId === 'quads_adductors') {
         workoutName = 'Quads Sculpt & Adducteurs Fermes';
         defaultFinisher = 'Goblet Squat tempo lent (2 x 15 reps)';
@@ -132,31 +222,113 @@ export const WorkoutGeneratorModal: React.FC<WorkoutGeneratorModalProps> = ({
           phaseTag: meta ? `Phase ${meta.id} · ${meta.name}` : undefined,
         };
       });
+    } else if (zoneId === 'back_sculpt_order' || zoneId === 'back') {
+      // Exact 1-2-3-4 order from Blandine's screenshots
+      workoutName = 'Dos Dessiné sans l’Élargir (Ordre 1-2-3-4)';
+      defaultFinisher = 'Gainage Stomach Vacuum (4 x 20s) + Marche inclinée 10 min';
+
+      const milieuPool = allExercises.filter((e) => e.specificMuscle === 'milieu-dos');
+      const dorsalPool = allExercises.filter((e) => e.specificMuscle === 'grand-dorsal');
+      const rearDeltPool = allExercises.filter(
+        (e) => e.specificMuscle === 'trapezes-arriere-epaule' || e.specificMuscle === 'epaule-arriere'
+      );
+      const backExt =
+        allExercises.find((e) => e.id === 'hyperextensions-bench') ||
+        allExercises.find((e) => e.specificMuscle === 'lombaires') ||
+        allExercises[0];
+
+      const step1A = pickOne(milieuPool, allExercises[0]);
+      const step1B = pickOne(
+        milieuPool.filter((e) => e.id !== step1A.id),
+        step1A
+      );
+      const step2 = pickOne(dorsalPool, allExercises[0]);
+      const step3 = pickOne(rearDeltPool, allExercises[0]);
+
+      selectedWithMeta = [
+        { exercise: step1A, phaseTag: '1. Milieu du dos (1/2)' },
+        ...(step1B.id !== step1A.id
+          ? [{ exercise: step1B, phaseTag: '1. Milieu du dos (2/2)' }]
+          : []),
+        { exercise: step2, phaseTag: '2. Grand dorsal (1 exo)' },
+        { exercise: step3, phaseTag: '3. Arrière d’épaule (1 exo)' },
+        { exercise: backExt, phaseTag: '4. Lombaires · Back Extension' },
+      ];
+    } else if (zoneId === 'dos_pecs') {
+      workoutName = 'Séance Dos / Pecs (Upper Body Dessiné & Galbe)';
+      defaultFinisher = 'Face Pulls corde (3 x 15) + Planche active 60s';
+
+      const pecsPool = allExercises.filter((e) => e.category === 'pecs');
+      const backMilieu = allExercises.filter((e) => e.specificMuscle === 'milieu-dos');
+      const backDorsal = allExercises.filter((e) => e.specificMuscle === 'grand-dorsal');
+
+      const pec1 = pickOne(
+        pecsPool.filter((e) => e.specificMuscle !== 'pecs-isolation'),
+        pecsPool[0] || allExercises[0]
+      );
+      const back1 = pickOne(backMilieu, allExercises[0]);
+      const pec2 = pickOne(
+        pecsPool.filter((e) => e.id !== pec1.id),
+        pecsPool[0] || allExercises[0]
+      );
+      const back2 = pickOne(backDorsal, allExercises[0]);
+
+      selectedWithMeta = [
+        { exercise: back1, phaseTag: 'Dos · Milieu du dos' },
+        { exercise: pec1, phaseTag: 'Pecs · Haut & Galbe' },
+        { exercise: back2, phaseTag: 'Dos · Grand dorsal' },
+        { exercise: pec2, phaseTag: 'Pecs · Isolation & Dessin' },
+      ];
+    } else if (zoneId === 'pecs_bras') {
+      workoutName = 'Séance Pecs / Bras (Buste Tonique & Bras Fermes)';
+      defaultFinisher = 'Extensions triceps corde en drop-set (2 x 15 reps)';
+
+      const pecsPool = allExercises.filter((e) => e.category === 'pecs');
+      const tricepsPool = allExercises.filter((e) => e.specificMuscle === 'triceps');
+      const bicepsOrDeltPool = allExercises.filter(
+        (e) => e.specificMuscle === 'biceps' || e.specificMuscle === 'epaule-cote'
+      );
+
+      const pec1 = pickOne(
+        pecsPool.filter((e) => e.specificMuscle === 'pecs-haut'),
+        pecsPool[0] || allExercises[0]
+      );
+      const pec2 = pickOne(
+        pecsPool.filter((e) => e.id !== pec1.id),
+        pecsPool[1] || pec1
+      );
+      const arm1 = pickOne(tricepsPool, allExercises[0]);
+      const arm2 = pickOne(bicepsOrDeltPool, allExercises[0]);
+
+      selectedWithMeta = [
+        { exercise: pec1, phaseTag: 'Pecs · Polyarticulaire' },
+        { exercise: pec2, phaseTag: 'Pecs · Isolation Buste' },
+        { exercise: arm1, phaseTag: 'Bras · Triceps Fermeté' },
+        { exercise: arm2, phaseTag: 'Bras · Biceps / Épaules' },
+      ];
+    } else if (zoneId === 'pecs') {
+      workoutName = 'Focus Pecs & Maintien du Buste';
+      defaultFinisher = 'Pompes inclinées sur banc au poids du corps (2 x max)';
+      const pecsPool = allExercises.filter((e) => e.category === 'pecs');
+      selectedWithMeta = pecsPool.slice(0, 4).map((ex) => ({
+        exercise: ex,
+        phaseTag: ex.primaryMuscle,
+      }));
     } else {
       let pool: Exercise[] = [];
 
-      if (zoneId === 'back') {
-        workoutName = 'Dos & Silhouette V-Shape';
-        defaultFinisher = 'Face Pulls corde en brûlure (3 x 15 reps)';
-        pool = allExercises.filter((ex) => ex.category === 'back');
-      } else if (zoneId === 'back_thick') {
-        workoutName = 'Dos Épais & Posture Altière';
-        defaultFinisher = 'Pull-over à la corde (3 x 15 reps)';
-        pool = allExercises.filter(
-          (ex) => ex.specificMuscle === 'milieu-dos' || ex.specificMuscle === 'grand-dorsal' || ex.specificMuscle === 'trapezes-arriere-epaule'
-        );
-      } else if (zoneId === 'arms') {
+      if (zoneId === 'arms') {
         workoutName = 'Épaules Galbées & Bras Toniques';
         defaultFinisher = 'Extensions triceps à la corde (3 x 15 reps)';
         pool = allExercises.filter((ex) => ex.category === 'arms');
       } else if (zoneId === 'fullbody') {
         workoutName = 'Full Body Glow & Tonification Totale';
-        defaultFinisher = '60 secondes de planche active ou 5 min de marche en côte';
+        defaultFinisher = '60 secondes de planche active ou 10 min de marche en côte';
         const fessier = allExercises.find((e) => e.specificMuscle === 'fessiers') || allExercises[0];
-        const dos = allExercises.find((e) => e.specificMuscle === 'grand-dorsal') || allExercises[1];
-        const epaule = allExercises.find((e) => e.specificMuscle === 'epaule-cote') || allExercises[2];
+        const dos = allExercises.find((e) => e.specificMuscle === 'milieu-dos') || allExercises[1];
+        const pec = allExercises.find((e) => e.category === 'pecs') || allExercises[2];
         const core = allExercises.find((e) => e.specificMuscle === 'abdos') || allExercises[3];
-        pool = [fessier, dos, epaule, core].filter(Boolean) as Exercise[];
+        pool = [fessier, dos, pec, core].filter(Boolean) as Exercise[];
       }
 
       const sorted = [...pool].sort((a, b) => {
@@ -173,13 +345,21 @@ export const WorkoutGeneratorModal: React.FC<WorkoutGeneratorModalProps> = ({
     const exerciseItems: WorkoutExerciseItem[] = selectedWithMeta.map((item, idx) => {
       const ex = item.exercise;
       const prev = getPreviousPerformance(ex.id);
-      const targetWeight = prev ? prev.weight : ex.equipment === 'dumbbell' ? 6 : ex.equipment === 'barbell' ? 30 : 20;
+      const targetWeight = prev
+        ? prev.weight
+        : ex.equipment === 'dumbbell'
+        ? 8
+        : ex.equipment === 'barbell'
+        ? 25
+        : ex.equipment === 'bodyweight'
+        ? 0
+        : 20;
       const setsCount = ex.defaultSets || 3;
 
       const sets = Array.from({ length: setsCount }, (_, sIdx) => ({
         id: `gen_set_${Date.now()}_${idx}_${sIdx}`,
         setNumber: sIdx + 1,
-        targetReps: parseInt(ex.defaultReps, 10) || 10,
+        targetReps: parseInt(ex.defaultReps, 10) || 12,
         targetWeight,
         completed: false,
       }));
@@ -190,7 +370,7 @@ export const WorkoutGeneratorModal: React.FC<WorkoutGeneratorModalProps> = ({
         exerciseName: ex.name,
         category: ex.category,
         equipment: ex.equipment,
-        restSeconds: ex.defaultRestSeconds || 60,
+        restSeconds: ex.defaultRestSeconds || 75,
         sets,
         notes: item.phaseTag,
       };
@@ -203,10 +383,17 @@ export const WorkoutGeneratorModal: React.FC<WorkoutGeneratorModalProps> = ({
   };
 
   const currentWarmupGuide =
-    selectedZone === 'glutes' || selectedZone === 'lower' || selectedZone === 'posterior' || selectedZone === 'quads_adductors'
+    selectedZone === 'glutes' ||
+    selectedZone === 'lower' ||
+    selectedZone === 'posterior' ||
+    selectedZone === 'quads_adductors'
       ? WARMUP_COOLDOWN_GUIDES['lower-body']
-      : selectedZone === 'back' || selectedZone === 'back_thick'
+      : selectedZone === 'back' ||
+        selectedZone === 'back_sculpt_order' ||
+        selectedZone === 'dos_pecs'
       ? WARMUP_COOLDOWN_GUIDES['back']
+      : selectedZone === 'pecs' || selectedZone === 'pecs_bras'
+      ? WARMUP_COOLDOWN_GUIDES['pecs']
       : selectedZone === 'arms'
       ? WARMUP_COOLDOWN_GUIDES['arms']
       : selectedZone === 'abs'
@@ -220,7 +407,7 @@ export const WorkoutGeneratorModal: React.FC<WorkoutGeneratorModalProps> = ({
       title={step === 'pick_goal' ? 'Séances Proposées & Circuits' : 'Ta séance proposée'}
       subtitle={
         step === 'pick_goal'
-          ? 'Choisis ta zone cible ou un circuit guidé'
+          ? 'Choisis ta séance (Dos 1-2-3-4, Dos/Pecs, Pecs/Bras, Bas du corps...)'
           : 'Vérifie les exercices avant de démarrer'
       }
       footer={
@@ -286,7 +473,7 @@ export const WorkoutGeneratorModal: React.FC<WorkoutGeneratorModalProps> = ({
               return (
                 <button
                   key={z.id}
-                  onClick={() => setSelectedZone(z.id as any)}
+                  onClick={() => setSelectedZone(z.id)}
                   className={`w-full p-3.5 rounded-[22px] text-left transition-all flex items-center justify-between gap-3 ${
                     isSelected
                       ? 'bg-[#831843] text-white'
@@ -402,7 +589,7 @@ export const WorkoutGeneratorModal: React.FC<WorkoutGeneratorModalProps> = ({
             <div>
               <h3 className="font-display font-bold text-base">{generatedName}</h3>
               <p className="text-xs text-[#831843] font-medium">
-                {generatedExercises.length} étapes prévues
+                {generatedExercises.length} exercices structurés dans l’ordre
               </p>
             </div>
             {selectedZone !== 'abs' && selectedZone !== 'cardio' && (
@@ -416,10 +603,8 @@ export const WorkoutGeneratorModal: React.FC<WorkoutGeneratorModalProps> = ({
             )}
           </div>
 
-          {/* Matériel personnel à prévoir avant de commencer */}
           <PersonalGearReminder exercises={generatedExercises} variant="banner" />
 
-          {/* Warm-up & Cooldown Collapsible Guide */}
           {currentWarmupGuide && (
             <div className="rounded-2xl bg-[#F6EDF2] overflow-hidden">
               <button
@@ -430,7 +615,11 @@ export const WorkoutGeneratorModal: React.FC<WorkoutGeneratorModalProps> = ({
                   <StreamlineIcon name="stretch" className="w-4 h-4 text-[#EC4899] shrink-0" />
                   <span>Échauffement & Étirements adaptés</span>
                 </span>
-                {showWarmupGuide ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                {showWarmupGuide ? (
+                  <ChevronUp className="w-4 h-4" />
+                ) : (
+                  <ChevronDown className="w-4 h-4" />
+                )}
               </button>
 
               {showWarmupGuide && (
@@ -472,7 +661,7 @@ export const WorkoutGeneratorModal: React.FC<WorkoutGeneratorModalProps> = ({
                       {ex.sets.length} {ex.sets.length > 1 ? 'séries' : 'bloc'}
                       {ex.restSeconds > 0 ? ` · Repos ${ex.restSeconds}s` : ''}
                     </span>
-                    {ex.notes && ex.notes.startsWith('Phase') && (
+                    {ex.notes && (
                       <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#FCE7F3] text-[#831843]">
                         {ex.notes}
                       </span>

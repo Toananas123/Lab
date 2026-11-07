@@ -225,6 +225,7 @@ export const ProgressView: React.FC<ProgressViewProps> = () => {
     const categorySets: Record<MuscleCategory, number> = {
       'lower-body': 0,
       back: 0,
+      pecs: 0,
       arms: 0,
       abs: 0,
       cardio: 0,

@@ -19,6 +19,72 @@ import { Workout, Routine } from '../types/fitness';
 const SOCIAL_STORAGE_KEY_PREFIX = 'glow_up_lab_social_v2_';
 const SOCIAL_FIRESTORE_DOC_ID = 'social_state_v2';
 
+const AVATAR_COLORS = ['#BE185D', '#831843', '#9D174D', '#DB2777', '#701A75', '#A21CAF'];
+
+function generateFriendWorkoutPosts(friend: FriendProfile): SocialFeedPost[] {
+  const baseTime = Date.now();
+  return [
+    {
+      id: `post-friend-w1-${friend.id}-${baseTime}`,
+      authorId: friend.id,
+      authorName: friend.displayName,
+      authorHandle: friend.handle,
+      authorAvatarColor: friend.avatarColor,
+      type: 'workout',
+      createdAt: 'Aujourd’hui · Séance validée',
+      workoutName: friend.todayWorkoutName || 'Dos Dessiné sans l’Élargir (Ordre 1-2-3-4)',
+      durationMinutes: 50,
+      exercisesSummary: [
+        { name: 'Tirage horizontal prise large', setsCount: 3, reps: '12', topWeight: 32.5 },
+        { name: 'Tirage vertical poitrine', setsCount: 3, reps: '10', topWeight: 35 },
+        { name: 'Oiseau inversé (Pec Deck)', setsCount: 3, reps: '15', topWeight: 20 },
+        { name: 'Back Extension (Banc à lombaires)', setsCount: 3, reps: '15', topWeight: 10 },
+      ],
+      hideWeights: friend.hideWeights,
+      caption: `Séance du jour terminée par ${friend.displayName} ! Ordre 1-2-3-4 respecté + 15 min de marche inclinée 12-5-30 en finisher 🔥`,
+      reactions: { fire: [], muscle: [], flower: [], clap: [] },
+      comments: [],
+    },
+    {
+      id: `post-friend-w2-${friend.id}-${baseTime - 1000}`,
+      authorId: friend.id,
+      authorName: friend.displayName,
+      authorHandle: friend.handle,
+      authorAvatarColor: friend.avatarColor,
+      type: 'workout',
+      createdAt: 'Il y a 2 jours',
+      workoutName: 'Leg Day Fessiers & Ischios (4 exos)',
+      durationMinutes: 55,
+      exercisesSummary: [
+        { name: 'Hip Thrust à la barre', setsCount: 4, reps: '10', topWeight: 85 },
+        { name: 'Soulevé de terre roumain (RDL)', setsCount: 3, reps: '10', topWeight: 55 },
+        { name: 'Fentes bulgares aux haltères', setsCount: 3, reps: '10', topWeight: 14 },
+        { name: 'Kick-back fessiers à la poulie', setsCount: 3, reps: '15', topWeight: 17.5 },
+      ],
+      hideWeights: friend.hideWeights,
+      caption: `Grosse congestion sur le bas du corps aujourd’hui ! Qui s’entraîne demain ? 🌸💪`,
+      reactions: { fire: [], muscle: [], flower: [], clap: [] },
+      comments: [],
+    },
+    {
+      id: `post-friend-pr-${friend.id}-${baseTime - 2000}`,
+      authorId: friend.id,
+      authorName: friend.displayName,
+      authorHandle: friend.handle,
+      authorAvatarColor: friend.avatarColor,
+      type: 'pr',
+      createdAt: 'Cette semaine',
+      prExerciseName: friend.favoriteExercise || 'Hip Thrust à la barre',
+      prWeight: 85,
+      prReps: 10,
+      hideWeights: friend.hideWeights,
+      caption: `Nouveau record personnel validé par ${friend.displayName} sur son exercice favori ! 🏆✨`,
+      reactions: { fire: [], muscle: [], flower: [], clap: [] },
+      comments: [],
+    },
+  ];
+}
+
 interface SocialContextType {
   mySocialProfile: MySocialProfile;
   updateMySocialProfile: (updates: Partial<MySocialProfile>) => Promise<void>;
@@ -28,15 +94,25 @@ interface SocialContextType {
   gymDates: GymDateInvite[];
   collectiveChallenge: CollectiveChallenge;
   badges: SocialBadge[];
-  pokedFriendIds: Record<string, string>; // friendId -> timestamp
+  pokedFriendIds: Record<string, string>;
 
-  // Friend actions (Features 1, 2, 3, 4, 5)
-  sendFriendRequestByQuery: (queryStr: string) => { success: boolean; message: string };
+  // Friend actions
+  sendFriendRequestByQuery: (
+    queryStr: string,
+    customDisplayName?: string
+  ) => { success: boolean; message: string };
+  renameFriend: (
+    friendId: string,
+    newDisplayName: string,
+    newHandle?: string,
+    newBio?: string,
+    newFavExercise?: string
+  ) => void;
   acceptFriendRequest: (requestId: string) => void;
   declineFriendRequest: (requestId: string) => void;
   removeFriend: (friendId: string) => void;
 
-  // Feed actions (Features 6, 7, 8, 9, 10)
+  // Feed actions
   toggleReaction: (postId: string, reaction: ReactionType) => void;
   addComment: (postId: string, text: string) => void;
   shareWorkoutToFeed: (workout: Workout, caption?: string) => void;
@@ -44,7 +120,7 @@ interface SocialContextType {
   shareObjectiveToFeed: (objectiveLabel: string) => void;
   shareRoutineToClub: (routine: Routine) => void;
 
-  // Gym Besties & Training Together (Features 11, 12, 13, 14, 15)
+  // Gym Besties & Training Together
   pokeFriend: (friendId: string) => { friendName: string; time: string } | null;
   createGymDateInvite: (invite: {
     friendId: string;
@@ -59,15 +135,14 @@ interface SocialContextType {
   deleteGymDateInvite: (inviteId: string) => void;
   importSharedRoutine: (payload: SharedRoutinePayload) => Promise<Routine>;
 
-  // Challenges & Duo Streak (Features 16, 17, 18, 19)
+  // Challenges & Duo Streak
   setDuoPartner: (friendId: string) => void;
   updateCollectiveChallengeTarget: (targetSessions: number, title?: string) => void;
 
-  // Refresh social data (Pull-to-refresh & button)
+  // Refresh social data
   refreshSocialData: () => Promise<void>;
 }
 
-// Par défaut, un compte n'a aucun ami, aucune demande, aucun post et aucun RDV
 const INITIAL_FRIENDS: FriendProfile[] = [];
 const INITIAL_REQUESTS: FriendRequest[] = [];
 const INITIAL_FEED: SocialFeedPost[] = [];
@@ -77,7 +152,7 @@ const SocialContext = createContext<SocialContextType | undefined>(undefined);
 
 export const SocialProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user, profile } = useAuth();
-  const { workouts, createRoutine } = useWorkout();
+  const { workouts, createRoutine, customExercises } = useWorkout();
   const currentUid = user?.uid || 'guest';
 
   const defaultHandle = useMemo(() => {
@@ -115,27 +190,44 @@ export const SocialProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     'Cagnotte Squad : Valider 12 séances à nous toutes cette semaine'
   );
 
+  // Ensure every friend in `friends` has workout posts visible in `feedPosts`
+  const ensureFriendPostsInFeed = (
+    loadedFriends: FriendProfile[],
+    loadedPosts: SocialFeedPost[]
+  ): SocialFeedPost[] => {
+    if (loadedFriends.length === 0) return loadedPosts;
+    let updatedPosts = [...loadedPosts];
+    for (const friend of loadedFriends) {
+      const hasWorkoutPostFromFriend = updatedPosts.some(
+        (p) => p.authorId === friend.id && p.type === 'workout'
+      );
+      if (!hasWorkoutPostFromFriend) {
+        const generated = generateFriendWorkoutPosts(friend);
+        updatedPosts = [...generated, ...updatedPosts];
+      }
+    }
+    return updatedPosts;
+  };
+
   const loadSocialState = async () => {
     const storageKey = `${SOCIAL_STORAGE_KEY_PREFIX}${currentUid}`;
+    let loadedFriends: FriendProfile[] = [];
+    let loadedPosts: SocialFeedPost[] = [];
+
     try {
       const cached = localStorage.getItem(storageKey);
       if (cached) {
         const parsed = JSON.parse(cached);
         if (parsed.mySocialProfile) setMySocialProfile(parsed.mySocialProfile);
-        if (Array.isArray(parsed.friends)) setFriends(parsed.friends);
+        if (Array.isArray(parsed.friends)) loadedFriends = parsed.friends;
         if (Array.isArray(parsed.friendRequests)) setFriendRequests(parsed.friendRequests);
-        if (Array.isArray(parsed.feedPosts)) setFeedPosts(parsed.feedPosts);
+        if (Array.isArray(parsed.feedPosts)) loadedPosts = parsed.feedPosts;
         if (Array.isArray(parsed.gymDates)) setGymDates(parsed.gymDates);
         if (parsed.pokedFriendIds && typeof parsed.pokedFriendIds === 'object') {
           setPokedFriendIds(parsed.pokedFriendIds);
         }
         if (parsed.challengeTarget) setChallengeTarget(parsed.challengeTarget);
         if (parsed.challengeTitle) setChallengeTitle(parsed.challengeTitle);
-      } else {
-        setFriends([]);
-        setFriendRequests([]);
-        setFeedPosts([]);
-        setGymDates([]);
       }
     } catch {
       // ignore parse errors
@@ -148,9 +240,9 @@ export const SocialProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         if (snap.exists()) {
           const data = snap.data();
           if (data.mySocialProfile) setMySocialProfile(data.mySocialProfile);
-          if (Array.isArray(data.friends)) setFriends(data.friends);
+          if (Array.isArray(data.friends)) loadedFriends = data.friends;
           if (Array.isArray(data.friendRequests)) setFriendRequests(data.friendRequests);
-          if (Array.isArray(data.feedPosts)) setFeedPosts(data.feedPosts);
+          if (Array.isArray(data.feedPosts)) loadedPosts = data.feedPosts;
           if (Array.isArray(data.gymDates)) setGymDates(data.gymDates);
           if (data.pokedFriendIds && typeof data.pokedFriendIds === 'object') {
             setPokedFriendIds(data.pokedFriendIds);
@@ -162,9 +254,12 @@ export const SocialProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         // offline fallback handled by localStorage
       }
     }
+
+    const enrichedPosts = ensureFriendPostsInFeed(loadedFriends, loadedPosts);
+    setFriends(loadedFriends);
+    setFeedPosts(enrichedPosts);
   };
 
-  // Load saved social state from localStorage / Firestore
   useEffect(() => {
     loadSocialState();
   }, [currentUid, user?.uid]);
@@ -226,26 +321,38 @@ export const SocialProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     await persistSocialState({ mySocialProfile: updated });
   };
 
-  const sendFriendRequestByQuery = (queryStr: string): { success: boolean; message: string } => {
+  const sendFriendRequestByQuery = (
+    queryStr: string,
+    customDisplayName?: string
+  ): { success: boolean; message: string } => {
     const cleaned = queryStr.trim();
-    if (!cleaned) {
-      return { success: false, message: 'Entre un @pseudo ou un code GLOW-XXX.' };
-    }
-    const lower = cleaned.toLowerCase();
-    const existingFriend = friends.find(
-      (f) => f.handle.toLowerCase() === lower || f.friendCode.toLowerCase() === lower || f.displayName.toLowerCase() === lower
-    );
-    if (existingFriend) {
-      return { success: false, message: `${existingFriend.displayName} fait déjà partie de tes amies !` };
+    const chosenName = (customDisplayName || '').trim();
+
+    if (!cleaned && !chosenName) {
+      return { success: false, message: 'Entre un prénom/surnom, un @pseudo ou un code GLOW-XXX.' };
     }
 
-    // Check if there is an incoming request matching this query
+    const searchTarget = (cleaned || chosenName).toLowerCase();
+    const existingFriend = friends.find(
+      (f) =>
+        f.handle.toLowerCase() === searchTarget ||
+        f.friendCode.toLowerCase() === searchTarget ||
+        f.displayName.toLowerCase() === searchTarget ||
+        (chosenName && f.displayName.toLowerCase() === chosenName.toLowerCase())
+    );
+    if (existingFriend) {
+      return {
+        success: false,
+        message: `${existingFriend.displayName} fait déjà partie de tes amies !`,
+      };
+    }
+
     const matchingIncoming = friendRequests.find(
       (r) =>
         r.status === 'pending' &&
-        (r.fromUser.handle.toLowerCase() === lower ||
-          r.fromUser.friendCode.toLowerCase() === lower ||
-          r.fromUser.displayName.toLowerCase() === lower)
+        (r.fromUser.handle.toLowerCase() === searchTarget ||
+          r.fromUser.friendCode.toLowerCase() === searchTarget ||
+          r.fromUser.displayName.toLowerCase() === searchTarget)
     );
     if (matchingIncoming) {
       acceptFriendRequest(matchingIncoming.id);
@@ -255,100 +362,186 @@ export const SocialProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       };
     }
 
-    // Create a new friend profile and add directly so user can immediately interact with them
-    const rawName = cleaned.replace(/^@/, '').replace(/^glow-/i, '').split('.')[0] || 'Sarah';
-    const capitalizedName = rawName.charAt(0).toUpperCase() + rawName.slice(1);
+    // Determine exact display name wanted by the user
+    let finalDisplayName = chosenName;
+    if (!finalDisplayName) {
+      if (!cleaned.startsWith('@') && !cleaned.toUpperCase().startsWith('GLOW-')) {
+        // User typed a real name or nickname directly (e.g. "Camille" or "Ma Chloé")
+        finalDisplayName = cleaned.charAt(0).toUpperCase() + cleaned.slice(1);
+      } else {
+        const extracted = cleaned
+          .replace(/^@/, '')
+          .replace(/^glow-/i, '')
+          .replace(/[._-]+/g, ' ')
+          .trim();
+        finalDisplayName = extracted
+          ? extracted
+              .split(' ')
+              .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+              .join(' ')
+          : 'Ma Gym Bestie';
+      }
+    }
+
+    const handleSlug = (cleaned.startsWith('@') ? cleaned.slice(1) : finalDisplayName)
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^a-z0-9.]/g, '');
     const handle = cleaned.startsWith('@')
       ? cleaned.toLowerCase()
-      : `@${rawName.toLowerCase()}.glow`;
+      : `@${handleSlug || 'bestie'}`;
+
     const code = cleaned.toUpperCase().startsWith('GLOW-')
       ? cleaned.toUpperCase()
-      : `GLOW-${Math.floor(10 + Math.random() * 89)}${capitalizedName.charAt(0).toUpperCase()}`;
+      : `GLOW-${Math.floor(10 + Math.random() * 89)}${finalDisplayName.charAt(0).toUpperCase()}`;
+
+    const color = AVATAR_COLORS[friends.length % AVATAR_COLORS.length];
 
     const newFriend: FriendProfile = {
       id: `friend-${Date.now()}`,
-      displayName: capitalizedName,
+      displayName: finalDisplayName,
       handle,
       friendCode: code,
-      avatarColor: '#BE185D',
-      bioStatus: 'Prête à tout donner cette semaine 💪✨',
-      favoriteExercise: 'Presse à cuisses inclinée (45°)',
-      weeklySessionsDone: 2,
+      avatarColor: color,
+      bioStatus: 'En plein Glow Up 💪 Séances Bas du corps, Dos & Pecs !',
+      favoriteExercise: 'Hip Thrust à la barre',
+      weeklySessionsDone: 3,
       weeklySessionsTarget: 3,
-      streakWeeks: 2,
-      totalWorkouts: 14,
+      streakWeeks: 3,
+      totalWorkouts: 18,
       hideWeights: false,
-      badges: ['Binôme de choc'],
-      objectivesDoneCount: 2,
-      todayActivity: 'Séance Bas du corps',
-      todayWorkoutName: 'Leg Day & Fessiers',
+      badges: ['Binôme de choc', 'Reine du Leg Day', 'Dos Dessiné sans Élargir'],
+      objectivesDoneCount: 3,
+      todayActivity: 'Séance Dos / Pecs',
+      todayWorkoutName: 'Dos Dessiné sans l’Élargir (Ordre 1-2-3-4)',
       isTrainingToday: true,
       weeklySchedule: [
-        { dayOfWeek: 1, dayName: 'Lundi', activity: 'Séance Bas du corps', workoutName: 'Leg Day', isTraining: true },
+        { dayOfWeek: 1, dayName: 'Lundi', activity: 'Séance Bas du corps', workoutName: 'Leg Day Fessiers', isTraining: true },
         { dayOfWeek: 2, dayName: 'Mardi', activity: 'Repos', isTraining: false },
-        { dayOfWeek: 3, dayName: 'Mercredi', activity: 'Séance Dos', workoutName: 'Dos & Bras', isTraining: true },
+        { dayOfWeek: 3, dayName: 'Mercredi', activity: 'Séance Dos', workoutName: 'Dos Dessiné 1-2-3-4', isTraining: true },
         { dayOfWeek: 4, dayName: 'Jeudi', activity: 'Repos', isTraining: false },
-        { dayOfWeek: 5, dayName: 'Vendredi', activity: 'Séance Fessiers', workoutName: 'Booty Sculpt', isTraining: true },
-        { dayOfWeek: 6, dayName: 'Samedi', activity: 'Repos', isTraining: false },
+        { dayOfWeek: 5, dayName: 'Vendredi', activity: 'Séance Fessiers', workoutName: 'Booty & Pecs/Bras', isTraining: true },
+        { dayOfWeek: 6, dayName: 'Samedi', activity: 'Cardio', workoutName: 'Marche 12-5-30', isTraining: true },
         { dayOfWeek: 0, dayName: 'Dimanche', activity: 'Repos', isTraining: false },
       ],
       sharedRoutines: [
         {
-          name: `Leg Day Galbe & Tension (${capitalizedName})`,
+          name: `Séance Dos Dessiné 1-2-3-4 (${finalDisplayName})`,
+          targetZone: 'back',
+          description: 'La routine Dos complète dans l’ordre : 1. Milieu du dos, 2. Grand dorsal, 3. Arrière d’épaule, 4. Back extension.',
+          finisher: 'Marche inclinée 12-5-30 (15 min)',
+          exercises: [
+            {
+              id: `sr-${Date.now()}-1`,
+              exerciseId: 'wide-grip-seated-cable-row',
+              exerciseName: 'Tirage horizontal prise large (Poulie basse)',
+              category: 'back',
+              equipment: 'cable',
+              restSeconds: 75,
+              sets: [
+                { id: 's1', setNumber: 1, targetReps: 12, targetWeight: 30, completed: false },
+                { id: 's2', setNumber: 2, targetReps: 12, targetWeight: 32.5, completed: false },
+                { id: 's3', setNumber: 3, targetReps: 12, targetWeight: 32.5, completed: false },
+              ],
+            },
+            {
+              id: `sr-${Date.now()}-2`,
+              exerciseId: 'lat-pulldown-wide',
+              exerciseName: 'Tirage vertical poitrine (Lat Pulldown)',
+              category: 'back',
+              equipment: 'cable',
+              restSeconds: 75,
+              sets: [
+                { id: 's4', setNumber: 1, targetReps: 12, targetWeight: 35, completed: false },
+                { id: 's5', setNumber: 2, targetReps: 10, targetWeight: 37.5, completed: false },
+                { id: 's6', setNumber: 3, targetReps: 10, targetWeight: 37.5, completed: false },
+              ],
+            },
+            {
+              id: `sr-${Date.now()}-3`,
+              exerciseId: 'reverse-pec-deck',
+              exerciseName: 'Oiseau inversé à la machine (Reverse Pec Deck)',
+              category: 'back',
+              equipment: 'machine',
+              restSeconds: 60,
+              sets: [
+                { id: 's7', setNumber: 1, targetReps: 15, targetWeight: 20, completed: false },
+                { id: 's8', setNumber: 2, targetReps: 15, targetWeight: 20, completed: false },
+                { id: 's9', setNumber: 3, targetReps: 15, targetWeight: 22.5, completed: false },
+              ],
+            },
+            {
+              id: `sr-${Date.now()}-4`,
+              exerciseId: 'hyperextensions-bench',
+              exerciseName: 'Back Extension (Banc à lombaires 45°)',
+              category: 'back',
+              equipment: 'bodyweight',
+              restSeconds: 60,
+              sets: [
+                { id: 's10', setNumber: 1, targetReps: 15, targetWeight: 10, completed: false },
+                { id: 's11', setNumber: 2, targetReps: 15, targetWeight: 10, completed: false },
+                { id: 's12', setNumber: 3, targetReps: 15, targetWeight: 10, completed: false },
+              ],
+            },
+          ],
+        },
+        {
+          name: `Leg Day Galbe & Tension (${finalDisplayName})`,
           targetZone: 'lower-body',
           description: 'Séance bas du corps en 4 exercices dans l’ordre anatomique : étirement, contraction, unilatéral et isolation.',
           finisher: 'Marche inclinée 12% · 4,5 km/h · 15 min',
           exercises: [
             {
-              id: `sr-${Date.now()}-1`,
+              id: `sr-${Date.now()}-5`,
               exerciseId: 'romanian-deadlift',
               exerciseName: 'Soulevé de terre roumain (RDL)',
               category: 'lower-body',
               equipment: 'barbell',
               restSeconds: 120,
               sets: [
-                { id: 's1', setNumber: 1, targetReps: 10, targetWeight: 50, completed: false },
-                { id: 's2', setNumber: 2, targetReps: 10, targetWeight: 55, completed: false },
-                { id: 's3', setNumber: 3, targetReps: 10, targetWeight: 55, completed: false },
+                { id: 's13', setNumber: 1, targetReps: 10, targetWeight: 50, completed: false },
+                { id: 's14', setNumber: 2, targetReps: 10, targetWeight: 55, completed: false },
+                { id: 's15', setNumber: 3, targetReps: 10, targetWeight: 55, completed: false },
               ],
             },
             {
-              id: `sr-${Date.now()}-2`,
+              id: `sr-${Date.now()}-6`,
               exerciseId: 'hip-thrust-barbell',
               exerciseName: 'Hip Thrust à la barre',
               category: 'lower-body',
               equipment: 'barbell',
               restSeconds: 120,
               sets: [
-                { id: 's4', setNumber: 1, targetReps: 10, targetWeight: 80, completed: false },
-                { id: 's5', setNumber: 2, targetReps: 10, targetWeight: 85, completed: false },
-                { id: 's6', setNumber: 3, targetReps: 8, targetWeight: 90, completed: false },
+                { id: 's16', setNumber: 1, targetReps: 10, targetWeight: 80, completed: false },
+                { id: 's17', setNumber: 2, targetReps: 10, targetWeight: 85, completed: false },
+                { id: 's18', setNumber: 3, targetReps: 8, targetWeight: 90, completed: false },
               ],
             },
             {
-              id: `sr-${Date.now()}-3`,
+              id: `sr-${Date.now()}-7`,
               exerciseId: 'bulgarian-split-squat',
               exerciseName: 'Fentes bulgares aux haltères',
               category: 'lower-body',
               equipment: 'dumbbell',
               restSeconds: 90,
               sets: [
-                { id: 's7', setNumber: 1, targetReps: 10, targetWeight: 12, completed: false },
-                { id: 's8', setNumber: 2, targetReps: 10, targetWeight: 14, completed: false },
-                { id: 's9', setNumber: 3, targetReps: 10, targetWeight: 14, completed: false },
+                { id: 's19', setNumber: 1, targetReps: 10, targetWeight: 12, completed: false },
+                { id: 's20', setNumber: 2, targetReps: 10, targetWeight: 14, completed: false },
+                { id: 's21', setNumber: 3, targetReps: 10, targetWeight: 14, completed: false },
               ],
             },
             {
-              id: `sr-${Date.now()}-4`,
+              id: `sr-${Date.now()}-8`,
               exerciseId: 'cable-glute-kickback',
               exerciseName: 'Kick-back fessiers à la poulie basse',
               category: 'lower-body',
               equipment: 'cable',
               restSeconds: 60,
               sets: [
-                { id: 's10', setNumber: 1, targetReps: 15, targetWeight: 15, completed: false },
-                { id: 's11', setNumber: 2, targetReps: 15, targetWeight: 15, completed: false },
-                { id: 's12', setNumber: 3, targetReps: 15, targetWeight: 17.5, completed: false },
+                { id: 's22', setNumber: 1, targetReps: 15, targetWeight: 15, completed: false },
+                { id: 's23', setNumber: 2, targetReps: 15, targetWeight: 15, completed: false },
+                { id: 's24', setNumber: 3, targetReps: 15, targetWeight: 17.5, completed: false },
               ],
             },
           ],
@@ -356,17 +549,109 @@ export const SocialProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       ],
     };
 
+    const friendPosts = generateFriendWorkoutPosts(newFriend);
     const nextFriends = [newFriend, ...friends];
+    const nextFeedPosts = [...friendPosts, ...feedPosts];
     const nextProfile = !mySocialProfile.duoPartnerId
-      ? { ...mySocialProfile, duoPartnerId: newFriend.id, duoStreakWeeks: Math.max(1, mySocialProfile.duoStreakWeeks) }
+      ? {
+          ...mySocialProfile,
+          duoPartnerId: newFriend.id,
+          duoStreakWeeks: Math.max(1, mySocialProfile.duoStreakWeeks),
+        }
       : mySocialProfile;
+
     setFriends(nextFriends);
+    setFeedPosts(nextFeedPosts);
     setMySocialProfile(nextProfile);
-    persistSocialState({ friends: nextFriends, mySocialProfile: nextProfile });
+    persistSocialState({
+      friends: nextFriends,
+      feedPosts: nextFeedPosts,
+      mySocialProfile: nextProfile,
+    });
+
     return {
       success: true,
-      message: `${capitalizedName} (${handle}) a été ajoutée à tes Gym Besties !`,
+      message: `${finalDisplayName} a été ajoutée à tes amies ! Ses séances sont maintenant visibles dans Fil & Activité 🌸`,
     };
+  };
+
+  const renameFriend = (
+    friendId: string,
+    newDisplayName: string,
+    newHandle?: string,
+    newBio?: string,
+    newFavExercise?: string
+  ) => {
+    const trimmedName = newDisplayName.trim();
+    if (!trimmedName) return;
+
+    const formattedHandle = newHandle?.trim()
+      ? newHandle.trim().startsWith('@')
+        ? newHandle.trim()
+        : `@${newHandle.trim()}`
+      : undefined;
+
+    const nextFriends = friends.map((f) => {
+      if (f.id !== friendId) return f;
+      return {
+        ...f,
+        displayName: trimmedName,
+        handle: formattedHandle || f.handle,
+        bioStatus: newBio !== undefined ? newBio.trim() || f.bioStatus : f.bioStatus,
+        favoriteExercise:
+          newFavExercise !== undefined
+            ? newFavExercise.trim() || f.favoriteExercise
+            : f.favoriteExercise,
+      };
+    });
+
+    const targetFriend = nextFriends.find((f) => f.id === friendId);
+
+    // Also update friend's name & handle across feedPosts, comments, and gymDates
+    const nextFeedPosts = feedPosts.map((post) => {
+      const updatedAuthor =
+        post.authorId === friendId
+          ? {
+              ...post,
+              authorName: trimmedName,
+              authorHandle: targetFriend?.handle || post.authorHandle,
+            }
+          : post;
+
+      const updatedComments = updatedAuthor.comments.map((c) =>
+        c.authorId === friendId
+          ? {
+              ...c,
+              authorName: trimmedName,
+              authorHandle: targetFriend?.handle || c.authorHandle,
+            }
+          : c
+      );
+
+      return {
+        ...updatedAuthor,
+        comments: updatedComments,
+      };
+    });
+
+    const nextGymDates = gymDates.map((d) =>
+      d.friendId === friendId
+        ? {
+            ...d,
+            friendName: trimmedName,
+            friendHandle: targetFriend?.handle || d.friendHandle,
+          }
+        : d
+    );
+
+    setFriends(nextFriends);
+    setFeedPosts(nextFeedPosts);
+    setGymDates(nextGymDates);
+    persistSocialState({
+      friends: nextFriends,
+      feedPosts: nextFeedPosts,
+      gymDates: nextGymDates,
+    });
   };
 
   const acceptFriendRequest = (requestId: string) => {
@@ -374,13 +659,25 @@ export const SocialProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     if (!target) return;
     const nextRequests = friendRequests.filter((r) => r.id !== requestId);
     const nextFriends = [target.fromUser, ...friends.filter((f) => f.id !== target.fromUser.id)];
+    const friendPosts = generateFriendWorkoutPosts(target.fromUser);
+    const nextFeedPosts = [...friendPosts, ...feedPosts];
     const nextProfile = !mySocialProfile.duoPartnerId
-      ? { ...mySocialProfile, duoPartnerId: target.fromUser.id, duoStreakWeeks: Math.max(1, mySocialProfile.duoStreakWeeks) }
+      ? {
+          ...mySocialProfile,
+          duoPartnerId: target.fromUser.id,
+          duoStreakWeeks: Math.max(1, mySocialProfile.duoStreakWeeks),
+        }
       : mySocialProfile;
     setFriendRequests(nextRequests);
     setFriends(nextFriends);
+    setFeedPosts(nextFeedPosts);
     setMySocialProfile(nextProfile);
-    persistSocialState({ friendRequests: nextRequests, friends: nextFriends, mySocialProfile: nextProfile });
+    persistSocialState({
+      friendRequests: nextRequests,
+      friends: nextFriends,
+      feedPosts: nextFeedPosts,
+      mySocialProfile: nextProfile,
+    });
   };
 
   const declineFriendRequest = (requestId: string) => {
@@ -391,6 +688,7 @@ export const SocialProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
   const removeFriend = (friendId: string) => {
     const nextFriends = friends.filter((f) => f.id !== friendId);
+    const nextPosts = feedPosts.filter((p) => p.authorId !== friendId);
     const nextProfile =
       mySocialProfile.duoPartnerId === friendId
         ? {
@@ -400,8 +698,13 @@ export const SocialProvider: React.FC<{ children: React.ReactNode }> = ({ childr
           }
         : mySocialProfile;
     setFriends(nextFriends);
+    setFeedPosts(nextPosts);
     setMySocialProfile(nextProfile);
-    persistSocialState({ friends: nextFriends, mySocialProfile: nextProfile });
+    persistSocialState({
+      friends: nextFriends,
+      feedPosts: nextPosts,
+      mySocialProfile: nextProfile,
+    });
   };
 
   const toggleReaction = (postId: string, reaction: ReactionType) => {
@@ -449,7 +752,7 @@ export const SocialProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
   const shareWorkoutToFeed = (workout: Workout, caption?: string) => {
     const myName = profile?.displayName || user?.displayName || 'Moi';
-    const summary = workout.exercises.slice(0, 4).map((ex) => {
+    const summary = workout.exercises.slice(0, 5).map((ex) => {
       const maxW = ex.sets.reduce((acc, s) => {
         const w = s.actualWeight ?? s.targetWeight ?? 0;
         return w > acc ? w : acc;
@@ -477,7 +780,7 @@ export const SocialProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       hideWeights: mySocialProfile.hideWeights,
       caption:
         caption ||
-        `Séance ${workout.name} validée ! 4 exercices bouclés avec régularité ✨`,
+        `Séance ${workout.name} validée ! ${workout.exercises.length} exercices bouclés avec régularité ✨`,
       reactions: { fire: [], muscle: [], flower: [], clap: [] },
       comments: [],
     };
@@ -538,7 +841,7 @@ export const SocialProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       targetZone: routine.targetZone,
       description: routine.description,
       finisher: routine.finisher,
-      exercises: routine.exercises.slice(0, 4),
+      exercises: routine.exercises.slice(0, 5),
     };
     const newPost: SocialFeedPost = {
       id: `post-routine-${Date.now()}`,
@@ -550,7 +853,7 @@ export const SocialProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       createdAt: 'À l’instant',
       workoutName: routine.name,
       sharedRoutine: payload,
-      caption: `Je vous partage ma routine « ${routine.name} » (4 exercices) ! Vous pouvez l’importer en 1 clic dans vos séances 🌸`,
+      caption: `Je vous partage ma routine « ${routine.name} » ! Vous pouvez l’importer en 1 clic dans vos séances 🌸`,
       reactions: { fire: [], muscle: [], flower: [], clap: [] },
       comments: [],
     };
@@ -563,7 +866,6 @@ export const SocialProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     const targetFriend = friends.find((f) => f.id === friendId);
     if (!targetFriend) return null;
 
-    // Haptic vibration if supported on mobile
     try {
       if (typeof navigator !== 'undefined' && navigator.vibrate) {
         navigator.vibrate([80, 40, 120]);
@@ -634,15 +936,15 @@ export const SocialProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   }): GymDateInvite | null => {
     let targetFriend = friends.find((f) => f.id === invite.friendId) || friends[0];
     let updatedFriendsList = friends;
+    let currentPosts = feedPosts;
 
-    // If user has no friends yet or typed a custom friend @pseudo/name in the invite form
     if (!targetFriend && invite.customFriendQuery?.trim()) {
       const cleaned = invite.customFriendQuery.trim();
-      const rawName = cleaned.replace(/^@/, '').replace(/^glow-/i, '').split('.')[0] || 'Sarah';
+      const rawName = cleaned.replace(/^@/, '').replace(/^glow-/i, '').trim() || 'Sarah';
       const capitalizedName = rawName.charAt(0).toUpperCase() + rawName.slice(1);
       const handle = cleaned.startsWith('@')
         ? cleaned.toLowerCase()
-        : `@${rawName.toLowerCase()}.glow`;
+        : `@${rawName.toLowerCase().replace(/[^a-z0-9]/g, '')}.glow`;
       const code = cleaned.toUpperCase().startsWith('GLOW-')
         ? cleaned.toUpperCase()
         : `GLOW-${Math.floor(10 + Math.random() * 89)}${capitalizedName.charAt(0).toUpperCase()}`;
@@ -668,7 +970,7 @@ export const SocialProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         weeklySchedule: [
           { dayOfWeek: 1, dayName: 'Lundi', activity: 'Séance Bas du corps', workoutName: 'Leg Day', isTraining: true },
           { dayOfWeek: 2, dayName: 'Mardi', activity: 'Repos', isTraining: false },
-          { dayOfWeek: 3, dayName: 'Mercredi', activity: 'Séance Dos', workoutName: 'Dos & Bras', isTraining: true },
+          { dayOfWeek: 3, dayName: 'Mercredi', activity: 'Séance Dos', workoutName: 'Dos & Pecs', isTraining: true },
           { dayOfWeek: 4, dayName: 'Jeudi', activity: 'Repos', isTraining: false },
           { dayOfWeek: 5, dayName: 'Vendredi', activity: 'Séance Fessiers', workoutName: 'Booty Sculpt', isTraining: true },
           { dayOfWeek: 6, dayName: 'Samedi', activity: 'Repos', isTraining: false },
@@ -678,6 +980,7 @@ export const SocialProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       };
       targetFriend = autoCreatedFriend;
       updatedFriendsList = [autoCreatedFriend, ...friends];
+      currentPosts = [...generateFriendWorkoutPosts(autoCreatedFriend), ...currentPosts];
       setFriends(updatedFriendsList);
     }
 
@@ -722,7 +1025,7 @@ export const SocialProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     };
 
     const nextDates = [newInvite, ...gymDates];
-    const nextPosts = [inviteFeedPost, ...feedPosts];
+    const nextPosts = [inviteFeedPost, ...currentPosts];
     setGymDates(nextDates);
     setFeedPosts(nextPosts);
     persistSocialState({
@@ -753,7 +1056,7 @@ export const SocialProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       targetZone: payload.targetZone || 'lower-body',
       description: payload.description || 'Séance partagée par une Gym Bestie',
       finisher: payload.finisher,
-      exercises: payload.exercises.slice(0, 4),
+      exercises: payload.exercises.slice(0, 5),
     });
   };
 
@@ -770,13 +1073,13 @@ export const SocialProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
   const updateCollectiveChallengeTarget = (targetSessions: number, title?: string) => {
     const nextTarget = Math.max(3, Math.min(50, targetSessions));
-    const nextTitle = title?.trim() || `Cagnotte Squad : Valider ${nextTarget} séances à nous toutes cette semaine`;
+    const nextTitle =
+      title?.trim() || `Cagnotte Squad : Valider ${nextTarget} séances à nous toutes cette semaine`;
     setChallengeTarget(nextTarget);
     setChallengeTitle(nextTitle);
     persistSocialState({ challengeTarget: nextTarget, challengeTitle: nextTitle });
   };
 
-  // Compute user's weekly sessions count for the collective challenge & podium
   const myWeeklySessionsCount = useMemo(() => {
     const completed = workouts.filter((w) => w.status === 'completed').length;
     return Math.max(2, Math.min(5, completed || 2));
@@ -801,18 +1104,32 @@ export const SocialProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     return {
       id: 'weekly-squad-challenge',
       title: challengeTitle,
-      description: 'Chaque séance terminée par toi ou tes amies fait monter la cagnotte commune de la semaine !',
+      description:
+        'Chaque séance terminée par toi ou tes amies fait monter la cagnotte commune de la semaine !',
       targetSessions: challengeTarget,
       weekLabel: 'Semaine en cours',
       contributions,
     };
-  }, [profile?.displayName, user?.displayName, currentUid, mySocialProfile.avatarColor, myWeeklySessionsCount, friends, challengeTitle, challengeTarget]);
+  }, [
+    profile?.displayName,
+    user?.displayName,
+    currentUid,
+    mySocialProfile.avatarColor,
+    myWeeklySessionsCount,
+    friends,
+    challengeTitle,
+    challengeTarget,
+  ]);
 
+  // 12 Complete Trophies & Social Badges
   const badges: SocialBadge[] = useMemo(() => {
     const totalReactionsGiven = feedPosts.reduce((acc, p) => {
       const reacted = Object.values(p.reactions).some((arr) => arr.includes(currentUid));
       return acc + (reacted ? 1 : 0);
     }, 0);
+    const completedWorkouts = workouts.filter((w) => w.status === 'completed');
+    const hasFinisherWorkout = completedWorkouts.some((w) => !!w.finisher);
+    const hasWizzSent = Object.keys(pokedFriendIds).length > 0 || feedPosts.some((p) => p.type === 'wizz');
 
     return [
       {
@@ -826,7 +1143,7 @@ export const SocialProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       {
         id: 'badge-streak-4',
         title: '4 semaines régulières',
-        description: 'Maintenir son planning d’entraînement 4 semaines de suite',
+        description: 'Maintenir son rythme d’entraînement 4 semaines de suite',
         icon: 'trophy',
         unlocked: mySocialProfile.duoStreakWeeks >= 4 || workouts.length >= 1,
         progressText: 'Régularité validée',
@@ -834,10 +1151,26 @@ export const SocialProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       {
         id: 'badge-legday-queen',
         title: 'Reine du Leg Day',
-        description: 'Structurer ses séances bas du corps en 4 exercices dans l’ordre anatomique',
+        description: 'Structurer ses séances bas du corps en 4 exercices dans l’ordre (1-2-3-4)',
         icon: 'kettlebell',
         unlocked: true,
-        progressText: 'Ordre 1-2-3-4 maîtrisé',
+        progressText: 'Ordre Bas du corps maîtrisé',
+      },
+      {
+        id: 'badge-back-sculpt',
+        title: 'Dos Dessiné sans Élargir',
+        description: 'Suivre l’ordre 1. Milieu du dos · 2. Grand dorsal · 3. Arrière d’épaule · 4. Lombaires',
+        icon: 'dumbbell',
+        unlocked: true,
+        progressText: 'Guide Dos 1-2-3-4 débloqué',
+      },
+      {
+        id: 'badge-pecs-upper',
+        title: 'Pecs & Upper Queen',
+        description: 'Intégrer les séances Dos/Pecs ou Pecs/Bras pour le maintien du buste',
+        icon: 'biceps',
+        unlocked: true,
+        progressText: 'Combos Dos/Pecs & Pecs/Bras prêts',
       },
       {
         id: 'badge-supporter',
@@ -846,6 +1179,30 @@ export const SocialProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         icon: 'sparkle',
         unlocked: totalReactionsGiven >= 1 || feedPosts.some((p) => p.comments.length > 0),
         progressText: `${Math.max(1, totalReactionsGiven)} encouragements`,
+      },
+      {
+        id: 'badge-wizz-master',
+        title: 'Wizz Master ⚡',
+        description: 'Envoyer un Wizz de motivation à une amie pour la booster avant sa séance',
+        icon: 'sparkle',
+        unlocked: hasWizzSent,
+        progressText: hasWizzSent ? 'Boost envoyé !' : 'Envoie ton 1er Wizz',
+      },
+      {
+        id: 'badge-finisher-addict',
+        title: 'Finisher Addict 🔥',
+        description: 'Compléter une séance avec un circuit Abdos ou Cardio (12-5-30, StairMaster...)',
+        icon: 'runner',
+        unlocked: hasFinisherWorkout || workouts.length >= 1,
+        progressText: 'Circuits Abdos & Cardio actifs',
+      },
+      {
+        id: 'badge-custom-creator',
+        title: 'Créatrice d’Exos ✨',
+        description: 'Créer son propre exercice avec fiche complète générée automatiquement',
+        icon: 'sparkle',
+        unlocked: customExercises.length > 0,
+        progressText: `${customExercises.length} exo(s) créé(s)`,
       },
       {
         id: 'badge-squad',
@@ -857,14 +1214,30 @@ export const SocialProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       },
       {
         id: 'badge-pr',
-        title: 'PR Breaker',
-        description: 'Partager ou célébrer un record personnel avec le Club',
+        title: 'PR Breaker 🏆',
+        description: 'Partager ou célébrer un record personnel de charge avec le Club',
         icon: 'weightlifter',
         unlocked: feedPosts.some((p) => p.type === 'pr'),
-        progressText: 'Surcharge active',
+        progressText: 'Surcharge progressive',
+      },
+      {
+        id: 'badge-10-workouts',
+        title: 'Club des 10 Séances',
+        description: 'Valider 10 séances complètes dans son historique Glow Up Lab',
+        icon: 'trophy',
+        unlocked: completedWorkouts.length >= 10,
+        progressText: `${completedWorkouts.length}/10 séances`,
       },
     ];
-  }, [feedPosts, currentUid, mySocialProfile, friends.length, workouts.length]);
+  }, [
+    feedPosts,
+    currentUid,
+    mySocialProfile,
+    friends.length,
+    workouts,
+    pokedFriendIds,
+    customExercises.length,
+  ]);
 
   return (
     <SocialContext.Provider
@@ -879,6 +1252,7 @@ export const SocialProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         badges,
         pokedFriendIds,
         sendFriendRequestByQuery,
+        renameFriend,
         acceptFriendRequest,
         declineFriendRequest,
         removeFriend,

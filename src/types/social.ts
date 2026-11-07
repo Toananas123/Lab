@@ -129,7 +129,15 @@ export interface SocialBadge {
   id: string;
   title: string;
   description: string;
-  icon: 'trophy' | 'sparkle' | 'heart-pulse' | 'kettlebell' | 'biceps' | 'weightlifter';
+  icon:
+    | 'trophy'
+    | 'sparkle'
+    | 'heart-pulse'
+    | 'kettlebell'
+    | 'biceps'
+    | 'weightlifter'
+    | 'dumbbell'
+    | 'runner';
   unlocked: boolean;
   progressText: string;
 }

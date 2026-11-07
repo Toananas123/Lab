@@ -1,7 +1,6 @@
 import React, { useState, useMemo, useRef } from 'react';
 import {
   UserPlus,
-  QrCode,
   Copy,
   Check,
   EyeOff,
@@ -13,15 +12,13 @@ import {
   Sparkles,
   Flame,
   Trophy,
-  Users,
-  Heart,
-  Share2,
   Zap,
   Edit3,
   X,
   RefreshCw,
   ArrowDown,
   Trash2,
+  Share2,
 } from 'lucide-react';
 import { useSocial } from '../../context/SocialContext';
 import { useWorkout } from '../../context/WorkoutContext';
@@ -58,6 +55,7 @@ export const SocialView: React.FC = () => {
     badges,
     pokedFriendIds,
     sendFriendRequestByQuery,
+    renameFriend,
     acceptFriendRequest,
     declineFriendRequest,
     removeFriend,
@@ -101,11 +99,17 @@ export const SocialView: React.FC = () => {
   const [commentInputs, setCommentInputs] = useState<Record<string, string>>({});
   const [openCommentsPostId, setOpenCommentsPostId] = useState<string | null>('post-1');
 
-  // Modals state
+  // Modals & Filter state
   const [isStoryModalOpen, setIsStoryModalOpen] = useState(false);
-  const [isQRModalOpen, setIsQRModalOpen] = useState(false);
   const [isPRModalOpen, setIsPRModalOpen] = useState(false);
   const [selectedFriendProfile, setSelectedFriendProfile] = useState<FriendProfile | null>(null);
+  const [feedFilter, setFeedFilter] = useState<'all' | 'friends' | 'mine'>('all');
+
+  // Rename Friend state
+  const [renamingFriend, setRenamingFriend] = useState<FriendProfile | null>(null);
+  const [renameDisplayName, setRenameDisplayName] = useState('');
+  const [renameHandle, setRenameHandle] = useState('');
+  const [renameBio, setRenameBio] = useState('');
 
   // PR form state
   const [prExerciseName, setPrExerciseName] = useState('Hip Thrust à la barre');
@@ -129,6 +133,7 @@ export const SocialView: React.FC = () => {
 
   // Friends & Profile tab state
   const [friendSearchQuery, setFriendSearchQuery] = useState('');
+  const [friendCustomNameInput, setFriendCustomNameInput] = useState('');
   const [isEditingMyCard, setIsEditingMyCard] = useState(false);
   const [editHandle, setEditHandle] = useState(mySocialProfile.handle);
   const [editBio, setEditBio] = useState(mySocialProfile.bioStatus);
@@ -295,12 +300,48 @@ export const SocialView: React.FC = () => {
 
   const handleAddFriendSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const res = sendFriendRequestByQuery(friendSearchQuery);
+    const res = sendFriendRequestByQuery(friendSearchQuery, friendCustomNameInput);
     triggerToast(res.message);
     if (res.success) {
       setFriendSearchQuery('');
+      setFriendCustomNameInput('');
     }
   };
+
+  const handleOpenRenameFriend = (friend: FriendProfile) => {
+    setRenamingFriend(friend);
+    setRenameDisplayName(friend.displayName);
+    setRenameHandle(friend.handle);
+    setRenameBio(friend.bioStatus);
+  };
+
+  const handleSaveRenamedFriend = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!renamingFriend || !renameDisplayName.trim()) return;
+    renameFriend(renamingFriend.id, renameDisplayName.trim(), renameHandle.trim(), renameBio.trim());
+    if (selectedFriendProfile?.id === renamingFriend.id) {
+      setSelectedFriendProfile({
+        ...selectedFriendProfile,
+        displayName: renameDisplayName.trim(),
+        handle: renameHandle.trim().startsWith('@')
+          ? renameHandle.trim()
+          : `@${renameHandle.trim()}`,
+        bioStatus: renameBio.trim() || selectedFriendProfile.bioStatus,
+      });
+    }
+    triggerToast(`Prénom / surnom mis à jour : ${renameDisplayName.trim()} ✨`);
+    setRenamingFriend(null);
+  };
+
+  const filteredFeedPosts = useMemo(() => {
+    if (feedFilter === 'friends') {
+      return feedPosts.filter((p) => p.authorId !== currentUid);
+    }
+    if (feedFilter === 'mine') {
+      return feedPosts.filter((p) => p.authorId === currentUid);
+    }
+    return feedPosts;
+  }, [feedPosts, feedFilter, currentUid]);
 
   const handleSaveMyCard = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -438,11 +479,15 @@ export const SocialView: React.FC = () => {
 
           <button
             type="button"
-            onClick={() => setIsQRModalOpen(true)}
+            onClick={() => {
+              navigator.clipboard?.writeText(mySocialProfile.friendCode).catch(() => {});
+              triggerToast(`Code ami ${mySocialProfile.friendCode} copié dans le presse-papiers !`);
+            }}
             className="px-3 py-2 rounded-full bg-[#F6EDF2] hover:bg-[#FCE7F3] text-[#831843] text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer"
+            title="Cliquer pour copier ton code ami"
           >
-            <QrCode className="w-3.5 h-3.5" />
-            <span>Code : {mySocialProfile.friendCode}</span>
+            <Copy className="w-3.5 h-3.5" />
+            <span>Copier Code : {mySocialProfile.friendCode}</span>
           </button>
 
           <button
@@ -796,9 +841,41 @@ export const SocialView: React.FC = () => {
             </div>
           </div>
 
+          {/* Feed Filter Bar: See Friends' Workouts vs All vs Mine */}
+          <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
+            <div className="flex items-center gap-1.5">
+              {(
+                [
+                  { id: 'all', label: `Tout le fil (${feedPosts.length})` },
+                  {
+                    id: 'friends',
+                    label: `Séances des amies (${feedPosts.filter((p) => p.authorId !== currentUid).length})`,
+                  },
+                  {
+                    id: 'mine',
+                    label: `Mes publications (${feedPosts.filter((p) => p.authorId === currentUid).length})`,
+                  },
+                ] as const
+              ).map((f) => (
+                <button
+                  key={f.id}
+                  type="button"
+                  onClick={() => setFeedFilter(f.id)}
+                  className={`px-3.5 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer ${
+                    feedFilter === f.id
+                      ? 'bg-[#831843] text-white'
+                      : 'bg-[#F6EDF2] text-[#7A616F] hover:text-[#2B091C]'
+                  }`}
+                >
+                  {f.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
           {/* Feature #6: Fil d'activité des amies */}
           <div className="space-y-4">
-            {feedPosts.map((post) => {
+            {filteredFeedPosts.map((post) => {
               const isCommentsOpen = openCommentsPostId === post.id;
               return (
                 <article
@@ -1893,11 +1970,11 @@ export const SocialView: React.FC = () => {
                 </button>
                 <button
                   type="button"
-                  onClick={() => setIsQRModalOpen(true)}
+                  onClick={handleCopyInviteLink}
                   className="px-3.5 py-2 rounded-full bg-[#831843] text-white text-xs font-bold flex items-center gap-1.5 shadow-2xs cursor-pointer"
                 >
-                  <QrCode className="w-3.5 h-3.5" />
-                  <span>QR & Lien</span>
+                  <Copy className="w-3.5 h-3.5" />
+                  <span>Copier mon lien d’invitation</span>
                 </button>
               </div>
             </div>
@@ -2000,21 +2077,31 @@ export const SocialView: React.FC = () => {
                 Ajouter une Gym Bestie
               </span>
               <h3 className="font-display font-bold text-base text-[#2B091C]">
-                Rechercher par @pseudo ou Code Ami (ex: @sarah.glow ou GLOW-53M)
+                Ajoute une amie et choisis comment tu veux l’appeler
               </h3>
             </div>
 
-            <form onSubmit={handleAddFriendSubmit} className="flex items-center gap-2">
+            <form
+              onSubmit={handleAddFriendSubmit}
+              className="grid grid-cols-1 sm:grid-cols-12 gap-2"
+            >
+              <input
+                type="text"
+                value={friendCustomNameInput}
+                onChange={(e) => setFriendCustomNameInput(e.target.value)}
+                placeholder="Son prénom ou surnom (ex: Ma Chloé, Camille...)"
+                className="sm:col-span-5 px-4 py-2.5 rounded-full bg-[#F6EDF2] text-xs font-semibold text-[#2B091C] focus:outline-hidden"
+              />
               <input
                 type="text"
                 value={friendSearchQuery}
                 onChange={(e) => setFriendSearchQuery(e.target.value)}
-                placeholder="Entre un @pseudo ou code GLOW-XXX..."
-                className="flex-1 px-4 py-2.5 rounded-full bg-[#F6EDF2] text-xs font-semibold text-[#2B091C] focus:outline-hidden"
+                placeholder="@pseudo ou Code Ami (ex: @chloe ou GLOW-53M)..."
+                className="sm:col-span-5 px-4 py-2.5 rounded-full bg-[#F6EDF2] text-xs font-semibold text-[#2B091C] focus:outline-hidden"
               />
               <button
                 type="submit"
-                className="px-4 py-2.5 rounded-full bg-[#831843] hover:bg-[#500724] text-white text-xs font-bold flex items-center gap-1.5 shrink-0 cursor-pointer"
+                className="sm:col-span-2 px-4 py-2.5 rounded-full bg-[#831843] hover:bg-[#500724] text-white text-xs font-bold flex items-center justify-center gap-1.5 shrink-0 cursor-pointer"
               >
                 <UserPlus className="w-4 h-4" />
                 <span>Ajouter</span>
@@ -2107,9 +2194,19 @@ export const SocialView: React.FC = () => {
                             {friend.displayName.charAt(0)}
                           </span>
                           <div>
-                            <p className="font-display font-bold text-sm text-[#2B091C]">
-                              {friend.displayName}
-                            </p>
+                            <div className="flex items-center gap-1.5">
+                              <p className="font-display font-bold text-sm text-[#2B091C]">
+                                {friend.displayName}
+                              </p>
+                              <button
+                                type="button"
+                                onClick={() => handleOpenRenameFriend(friend)}
+                                className="p-1 rounded-full bg-[#F6EDF2] hover:bg-[#FCE7F3] text-[#831843] cursor-pointer"
+                                title="Renommer cette amie comme tu veux"
+                              >
+                                <Edit3 className="w-3 h-3" />
+                              </button>
+                            </div>
                             <p className="text-xs text-[#7A616F]">{friend.handle}</p>
                           </div>
                         </div>
@@ -2125,18 +2222,27 @@ export const SocialView: React.FC = () => {
                       </p>
                     </div>
 
-                    <div className="flex items-center gap-2 pt-1">
+                    <div className="flex items-center gap-1.5 pt-1">
+                      <button
+                        type="button"
+                        onClick={() => handleOpenRenameFriend(friend)}
+                        className="px-3 py-2 rounded-full bg-[#FCE7F3] hover:bg-[#FBCFE8] text-[#831843] text-xs font-bold flex items-center gap-1 cursor-pointer"
+                        title="Choisir son nom / surnom"
+                      >
+                        <Edit3 className="w-3 h-3" />
+                        <span>Renommer</span>
+                      </button>
                       <button
                         type="button"
                         onClick={() => setSelectedFriendProfile(friend)}
                         className="flex-1 py-2 rounded-full bg-[#F6EDF2] hover:bg-[#FCE7F3] text-[#831843] text-xs font-bold cursor-pointer"
                       >
-                        Voir la carte
+                        Carte
                       </button>
                       <button
                         type="button"
                         onClick={() => handleTriggerWizz(friend)}
-                        className={`px-3.5 py-2 rounded-full text-xs font-bold flex items-center gap-1 transition-all active:scale-95 cursor-pointer ${
+                        className={`px-3 py-2 rounded-full text-xs font-bold flex items-center gap-1 transition-all active:scale-95 cursor-pointer ${
                           pokedFriendIds[friend.id] || friend.lastPokedAt
                             ? 'bg-[#FCE7F3] text-[#831843] border border-[#F472B6]/40'
                             : 'bg-[#831843] hover:bg-[#500724] text-white'
@@ -2144,11 +2250,7 @@ export const SocialView: React.FC = () => {
                         title="Envoyer un Wizz motivation"
                       >
                         <Zap className="w-3.5 h-3.5" />
-                        <span>
-                          {pokedFriendIds[friend.id] || friend.lastPokedAt
-                            ? `Wizz (${pokedFriendIds[friend.id] || friend.lastPokedAt})`
-                            : 'Wizz ⚡'}
-                        </span>
+                        <span>Wizz ⚡</span>
                       </button>
                     </div>
                   </div>
@@ -2168,68 +2270,59 @@ export const SocialView: React.FC = () => {
         workout={workouts[0] || null}
       />
 
-      {/* Feature #3: Lien ou QR Code d'invitation rapide */}
+      {/* Modal Renommer une amie comme on veut */}
       <BottomSheet
-        isOpen={isQRModalOpen}
-        onClose={() => setIsQRModalOpen(false)}
-        title="Inviter une Gym Bestie"
-        subtitle="Partage ton QR Code ou ton lien d’invitation en 1 clic"
+        isOpen={!!renamingFriend}
+        onClose={() => setRenamingFriend(null)}
+        title={renamingFriend ? `Renommer ${renamingFriend.displayName}` : 'Renommer mon amie'}
+        subtitle="Choisis le prénom, surnom ou pseudo que tu veux afficher pour elle"
       >
-        <div className="space-y-4 text-center">
-          <div className="p-6 rounded-[28px] bg-grainy-pink border border-[#F472B6]/40 inline-flex flex-col items-center gap-3 mx-auto">
-            {/* Stylised SVG QR Code */}
-            <div className="w-44 h-44 rounded-2xl bg-white p-3 shadow-sm flex items-center justify-center">
-              <svg viewBox="0 0 120 120" className="w-full h-full text-[#831843]" fill="currentColor">
-                <rect x="8" y="8" width="32" height="32" rx="6" fill="none" stroke="currentColor" strokeWidth="6" />
-                <rect x="18" y="18" width="12" height="12" rx="2" />
-                <rect x="80" y="8" width="32" height="32" rx="6" fill="none" stroke="currentColor" strokeWidth="6" />
-                <rect x="90" y="18" width="12" height="12" rx="2" />
-                <rect x="8" y="80" width="32" height="32" rx="6" fill="none" stroke="currentColor" strokeWidth="6" />
-                <rect x="18" y="90" width="12" height="12" rx="2" />
-                <rect x="50" y="12" width="8" height="8" rx="2" />
-                <rect x="62" y="24" width="8" height="16" rx="2" />
-                <rect x="48" y="48" width="24" height="24" rx="6" />
-                <rect x="12" y="52" width="16" height="8" rx="2" />
-                <rect x="82" y="52" width="10" height="18" rx="2" />
-                <rect x="98" y="60" width="12" height="10" rx="2" />
-                <rect x="50" y="84" width="16" height="8" rx="2" />
-                <rect x="76" y="82" width="12" height="12" rx="2" />
-                <rect x="94" y="94" width="16" height="16" rx="3" />
-                <rect x="54" y="98" width="12" height="12" rx="2" />
-              </svg>
+        {renamingFriend && (
+          <form onSubmit={handleSaveRenamedFriend} className="space-y-3.5">
+            <div>
+              <label className="text-xs font-bold text-[#2B091C] block mb-1">
+                Prénom ou surnom affiché *
+              </label>
+              <input
+                type="text"
+                required
+                value={renameDisplayName}
+                onChange={(e) => setRenameDisplayName(e.target.value)}
+                placeholder="Ex: Ma Chloé, Camille, Sarah Bestie..."
+                className="w-full px-3.5 py-2.5 rounded-2xl bg-[#F6EDF2] text-xs font-bold text-[#2B091C]"
+              />
             </div>
             <div>
-              <span className="font-mono font-extrabold text-base text-[#831843] block">
-                {mySocialProfile.friendCode}
-              </span>
-              <span className="text-xs font-semibold text-[#5C3A4D]">
-                {mySocialProfile.handle}
-              </span>
+              <label className="text-xs font-bold text-[#2B091C] block mb-1">
+                Son @pseudo
+              </label>
+              <input
+                type="text"
+                value={renameHandle}
+                onChange={(e) => setRenameHandle(e.target.value)}
+                placeholder="@chloe.glow"
+                className="w-full px-3.5 py-2.5 rounded-2xl bg-[#F6EDF2] text-xs font-semibold text-[#831843]"
+              />
             </div>
-          </div>
-
-          <div className="flex flex-col sm:flex-row gap-2.5">
+            <div>
+              <label className="text-xs font-bold text-[#2B091C] block mb-1">
+                Petite bio / note sur sa carte
+              </label>
+              <input
+                type="text"
+                value={renameBio}
+                onChange={(e) => setRenameBio(e.target.value)}
+                className="w-full px-3.5 py-2.5 rounded-2xl bg-[#F6EDF2] text-xs text-[#2B091C]"
+              />
+            </div>
             <button
-              type="button"
-              onClick={handleCopyInviteLink}
-              className="flex-1 py-3 px-4 rounded-full bg-[#831843] text-white text-xs font-bold flex items-center justify-center gap-2 cursor-pointer"
+              type="submit"
+              className="w-full py-3 rounded-full bg-[#831843] text-white text-xs font-bold cursor-pointer"
             >
-              <Copy className="w-4 h-4" />
-              <span>Copier mon lien d’invitation</span>
+              Enregistrer son nouveau nom ✨
             </button>
-            <button
-              type="button"
-              onClick={() => {
-                navigator.clipboard?.writeText(mySocialProfile.friendCode).catch(() => {});
-                triggerToast(`Code ami ${mySocialProfile.friendCode} copié !`);
-              }}
-              className="flex-1 py-3 px-4 rounded-full bg-[#F6EDF2] text-[#831843] text-xs font-bold flex items-center justify-center gap-2 cursor-pointer"
-            >
-              <Share2 className="w-4 h-4" />
-              <span>Copier le code {mySocialProfile.friendCode}</span>
-            </button>
-          </div>
-        </div>
+          </form>
+        )}
       </BottomSheet>
 
       {/* Feature #9: Modal Célébrer un Record Personnel (PR) */}
@@ -2324,19 +2417,29 @@ export const SocialView: React.FC = () => {
         {selectedFriendProfile && (
           <div className="space-y-4">
             <div className="p-4 rounded-[26px] bg-grainy-pink border border-[#F472B6]/35 space-y-3">
-              <div className="flex items-center gap-3.5">
-                <span
-                  className="w-14 h-14 rounded-2xl text-white font-display font-extrabold text-xl flex items-center justify-center shrink-0"
-                  style={{ backgroundColor: selectedFriendProfile.avatarColor }}
-                >
-                  {selectedFriendProfile.displayName.charAt(0)}
-                </span>
-                <div>
-                  <h4 className="font-display font-bold text-lg text-[#2B091C]">
-                    {selectedFriendProfile.displayName}
-                  </h4>
-                  <p className="text-xs text-[#5C3A4D]">{selectedFriendProfile.bioStatus}</p>
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center gap-3.5">
+                  <span
+                    className="w-14 h-14 rounded-2xl text-white font-display font-extrabold text-xl flex items-center justify-center shrink-0"
+                    style={{ backgroundColor: selectedFriendProfile.avatarColor }}
+                  >
+                    {selectedFriendProfile.displayName.charAt(0)}
+                  </span>
+                  <div>
+                    <h4 className="font-display font-bold text-lg text-[#2B091C]">
+                      {selectedFriendProfile.displayName}
+                    </h4>
+                    <p className="text-xs text-[#5C3A4D]">{selectedFriendProfile.bioStatus}</p>
+                  </div>
                 </div>
+                <button
+                  type="button"
+                  onClick={() => handleOpenRenameFriend(selectedFriendProfile)}
+                  className="px-3 py-1.5 rounded-full bg-white text-[#831843] text-xs font-bold flex items-center gap-1 shadow-2xs cursor-pointer"
+                >
+                  <Edit3 className="w-3.5 h-3.5" />
+                  <span>Renommer</span>
+                </button>
               </div>
 
               <div className="grid grid-cols-3 gap-2 text-center">

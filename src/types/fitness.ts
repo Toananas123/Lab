@@ -1,4 +1,4 @@
-export type MuscleCategory = 'lower-body' | 'back' | 'arms' | 'abs' | 'cardio';
+export type MuscleCategory = 'lower-body' | 'back' | 'pecs' | 'arms' | 'abs' | 'cardio';
 
 export type EquipmentType =
   | 'barbell'
@@ -11,8 +11,11 @@ export type EquipmentType =
 export type ActivityType =
   | 'Séance Bas du corps'
   | 'Séance Fessiers'
-  | 'Séance Bras'
   | 'Séance Dos'
+  | 'Séance Pecs'
+  | 'Séance Dos / Pecs'
+  | 'Séance Pecs / Bras'
+  | 'Séance Bras'
   | 'Repos'
   | 'TSE'
   | 'Pilates'
@@ -35,8 +38,11 @@ export type ActivityType =
 export const PLANNING_ACTIVITIES: ActivityType[] = [
   'Séance Bas du corps',
   'Séance Fessiers',
-  'Séance Bras',
   'Séance Dos',
+  'Séance Pecs',
+  'Séance Dos / Pecs',
+  'Séance Pecs / Bras',
+  'Séance Bras',
   'Repos',
   'TSE',
   'Pilates',
@@ -49,8 +55,11 @@ export const PLANNING_ACTIVITIES: ActivityType[] = [
 export const ALL_ACTIVITIES: ActivityType[] = [
   'Séance Bas du corps',
   'Séance Fessiers',
-  'Séance Bras',
   'Séance Dos',
+  'Séance Pecs',
+  'Séance Dos / Pecs',
+  'Séance Pecs / Bras',
+  'Séance Bras',
   'Repos',
   'TSE',
   'Pilates',
@@ -79,6 +88,9 @@ export type SpecificMuscleGroup =
   | 'milieu-dos'
   | 'lombaires'
   | 'trapezes-arriere-epaule'
+  | 'pecs-haut'
+  | 'pecs-global'
+  | 'pecs-isolation'
   | 'epaule-avant'
   | 'epaule-cote'
   | 'epaule-arriere'
@@ -98,10 +110,13 @@ export const SPECIFIC_MUSCLE_GROUPS: SpecificMuscleMeta[] = [
   { id: 'quadriceps', label: 'Quadriceps', category: 'lower-body' },
   { id: 'ischios', label: 'Ischios', category: 'lower-body' },
   { id: 'adducteurs', label: 'Adducteurs', category: 'lower-body' },
-  { id: 'grand-dorsal', label: 'Grand dorsal', category: 'back' },
-  { id: 'milieu-dos', label: 'Milieu du dos', category: 'back' },
-  { id: 'lombaires', label: 'Lombaires', category: 'back' },
-  { id: 'trapezes-arriere-epaule', label: 'Trapèze / Arrière épaule', category: 'back' },
+  { id: 'milieu-dos', label: '1. Milieu du dos', category: 'back' },
+  { id: 'grand-dorsal', label: '2. Grand dorsal', category: 'back' },
+  { id: 'trapezes-arriere-epaule', label: '3. Arrière d’épaule / Trapèzes', category: 'back' },
+  { id: 'lombaires', label: '4. Lombaires', category: 'back' },
+  { id: 'pecs-haut', label: 'Haut des Pecs & Buste', category: 'pecs' },
+  { id: 'pecs-global', label: 'Pectoraux Global (Développés)', category: 'pecs' },
+  { id: 'pecs-isolation', label: 'Isolation Pecs (Butterfly / Poulie)', category: 'pecs' },
   { id: 'epaule-avant', label: 'Épaule (avant)', category: 'arms' },
   { id: 'epaule-cote', label: 'Épaule (côté)', category: 'arms' },
   { id: 'epaule-arriere', label: 'Épaule (arrière)', category: 'arms' },
@@ -178,11 +193,6 @@ export interface Workout {
   durationMinutes?: number;
   exercises: WorkoutExerciseItem[];
   finisher?: string;
-  finisherPresetId?: string;
-  finisherLog?: FinisherLog;
-  programId?: string;
-  programWeekNumber?: number;
-  programDayId?: string;
   notes?: string;
   rating?: number; // Ressenti de 1 à 5 🔥
   startedAt?: string;
@@ -199,7 +209,6 @@ export interface Routine {
   description?: string;
   exercises: WorkoutExerciseItem[];
   finisher?: string;
-  finisherPresetId?: string;
   notes?: string;
   isDefault?: boolean;
   createdAt?: string;
@@ -231,12 +240,8 @@ export interface WeeklyPlanDay {
   targetZone?: string;
   activity?: ActivityType;
   activities?: ActivityType[];
-  finisherType?: 'none' | 'cardio' | 'abs' | 'pump';
+  finisherType?: 'none' | 'cardio' | 'abs';
   finisher?: string;
-  finisherPresetId?: string;
-  programId?: string;
-  programWeekNumber?: number;
-  programDayId?: string;
   status: 'planned' | 'in_progress' | 'completed' | 'postponed' | 'cancelled' | 'rest';
   notes?: string;
 }
@@ -251,143 +256,3 @@ export interface UserProfile {
   createdAt: string;
   updatedAt?: string;
 }
-
-// ==========================================
-// MODULE FINISHERS EN FIN DE SÉANCE
-// ==========================================
-
-export type FinisherCategory = 'abs' | 'cardio' | 'pump';
-
-export type FinisherExecutionMode = 'interval' | 'countdown' | 'stopwatch';
-
-export interface FinisherIntervalStep {
-  label: string;
-  type: 'effort' | 'rest';
-  durationSeconds: number;
-  cue?: string;
-}
-
-export interface FinisherPhaseAlert {
-  atElapsedSeconds: number;
-  label: string;
-  cue: string;
-}
-
-export interface FinisherPreset {
-  id: string;
-  name: string;
-  category: FinisherCategory;
-  categoryLabel: string;
-  durationLabel: string;
-  totalDurationSeconds: number;
-  executionMode: FinisherExecutionMode;
-  summary: string;
-  instructions: string[];
-  intervals?: FinisherIntervalStep[];
-  phaseAlerts?: FinisherPhaseAlert[];
-  targetReps?: number; // ex: 100 pour Challenge 100 Reps
-  targetSets?: number; // ex: 2 pour Drop-Set Mécanique
-  restBetweenSetsSeconds?: number;
-  selectableExercises?: string[];
-}
-
-export interface FinisherLog {
-  presetId: string;
-  name: string;
-  category: FinisherCategory;
-  executionMode: FinisherExecutionMode;
-  completedAt: string;
-  durationSeconds: number;
-  repsCompleted?: number;
-  selectedExercise?: string;
-  isNewRecord?: boolean;
-}
-
-// ==========================================
-// SYSTÈME DE PROGRAMMES D'ENTRAÎNEMENT
-// ==========================================
-
-export type ProgramObjective = 'hypertrophy' | 'shred' | 'toning' | 'performance';
-
-export type ProgramLevel = 'Débutant' | 'Intermédiaire' | 'Avancé';
-
-export type ProgramEquipmentTag =
-  | 'Bandes de résistance'
-  | 'Sangle chevillère'
-  | 'Haltères'
-  | 'Poids du corps'
-  | 'Machines'
-  | 'Barre & Poids';
-
-export interface ProgramDayTemplate {
-  id: string;
-  dayNumber: number; // 1..7
-  label: string; // ex: "Jour 1 — Booty & Ischios" ou "Repos Actif"
-  isRest: boolean;
-  activityType?: ActivityType;
-  routineId?: string;
-  workoutTitle?: string;
-  targetZone?: string;
-  durationMinutes?: number;
-  finisherPresetId?: string;
-  exercises?: WorkoutExerciseItem[];
-}
-
-export interface ProgramWeek {
-  weekNumber: number;
-  title: string; // ex: "Semaine 1 — Adaptation & Connexion Neuromusculaire"
-  focusNote?: string;
-  days: ProgramDayTemplate[];
-}
-
-export interface TrainingProgram {
-  id: string;
-  title: string;
-  subtitle: string;
-  objective: ProgramObjective;
-  objectiveLabel: string;
-  durationWeeks: 4 | 6 | 8 | 12 | number;
-  sessionsPerWeek: number;
-  level: ProgramLevel;
-  coverImage: string;
-  equipment: ProgramEquipmentTag[];
-  description: string;
-  coachTips?: string[];
-  weeks: ProgramWeek[];
-  isCustom?: boolean;
-  createdBy?: string;
-  sharedCode?: string;
-  createdAt?: string;
-}
-
-export interface ProgramMeasurementSnapshot {
-  weight?: number;
-  waist?: number;
-  hips?: number;
-  thighs?: number;
-  arms?: number;
-  chest?: number;
-  date?: string;
-}
-
-export interface UserActiveProgram {
-  programId: string;
-  programTitle: string;
-  objective: ProgramObjective;
-  objectiveLabel: string;
-  startDate: string; // YYYY-MM-DD
-  preferredDays: number[]; // ex: [1, 3, 5] pour Lundi, Mercredi, Vendredi
-  durationWeeks: number;
-  sessionsPerWeek: number;
-  totalSessionsPlanned: number;
-  completedSessionCount: number;
-  completedWorkoutIds: string[];
-  currentWeek: number;
-  progressPercent: number;
-  totalVolumeKg: number;
-  initialMeasurements?: ProgramMeasurementSnapshot;
-  isCompleted?: boolean;
-  completedAt?: string;
-  updatedAt: string;
-}
-

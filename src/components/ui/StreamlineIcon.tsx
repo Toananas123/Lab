@@ -201,6 +201,7 @@ export const StreamlineIcon: React.FC<StreamlineIconProps> = ({
 export const getActivityStreamlineIcon = (activity: string): StreamlineIconName => {
   const lower = activity.toLowerCase();
   if (lower.includes('fessier') || lower.includes('bas du corps')) return 'kettlebell';
+  if (lower.includes('pec')) return 'weightlifter';
   if (lower.includes('bras') || lower.includes('épaule') || lower.includes('biceps')) return 'biceps';
   if (lower.includes('dos')) return 'dumbbell';
   if (lower.includes('course') || lower.includes('cardio') || lower.includes('marche')) return 'runner';
@@ -220,6 +221,8 @@ export const getCategoryStreamlineIcon = (category: string): StreamlineIconName 
       return 'kettlebell';
     case 'back':
       return 'dumbbell';
+    case 'pecs':
+      return 'weightlifter';
     case 'arms':
       return 'biceps';
     case 'abs':

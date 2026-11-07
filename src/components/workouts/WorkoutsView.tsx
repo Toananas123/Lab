@@ -52,7 +52,9 @@ export const WorkoutsView: React.FC<WorkoutsViewProps> = ({ onStartActiveMode })
   const [isGeneratorOpen, setIsGeneratorOpen] = useState(false);
   const [isEditorOpen, setIsEditorOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<'routines' | 'history'>('routines');
-  const [routineFilter, setRoutineFilter] = useState<'all' | 'strength' | 'abs' | 'cardio'>('all');
+  const [routineFilter, setRoutineFilter] = useState<
+    'all' | 'upper_combos' | 'lower' | 'abs' | 'cardio'
+  >('all');
 
   // Preview modal for a specific Abdo or Cardio circuit
   const [selectedAbdoCircuit, setSelectedAbdoCircuit] = useState<AbdoCircuit | null>(null);
@@ -308,12 +310,24 @@ export const WorkoutsView: React.FC<WorkoutsViewProps> = ({ onStartActiveMode })
   const getRoutineIcon = (targetZone: string): StreamlineIconName => {
     if (targetZone === 'abs') return 'stretch';
     if (targetZone === 'cardio') return 'runner';
-    if (targetZone === 'arms') return 'biceps';
-    if (targetZone === 'back') return 'dumbbell';
+    if (targetZone === 'arms' || targetZone === 'pecs_bras') return 'biceps';
+    if (
+      targetZone === 'back' ||
+      targetZone === 'back_sculpt_order' ||
+      targetZone === 'dos_pecs' ||
+      targetZone === 'pecs'
+    ) {
+      return 'dumbbell';
+    }
     return 'weightlifter';
   };
 
-  const getRoutineBadgeLabel = (targetZone: string): string => {
+  const getRoutineBadgeLabel = (targetZone: string, routineName?: string): string => {
+    const lowerName = (routineName || '').toLowerCase();
+    if (lowerName.includes('dos / pecs') || targetZone === 'dos_pecs') return 'Combo Dos / Pecs';
+    if (lowerName.includes('pecs / bras') || targetZone === 'pecs_bras') return 'Combo Pecs / Bras';
+    if (lowerName.includes('1-2-3-4') || targetZone === 'back_sculpt_order') return 'Dos · Ordre 1-2-3-4';
+    if (targetZone === 'pecs') return 'Pecs & Buste';
     if (targetZone === 'abs') return 'Circuit Abdos';
     if (targetZone === 'cardio') return 'Circuit Cardio';
     if (targetZone === 'arms') return 'Bras & Épaules';
@@ -326,7 +340,20 @@ export const WorkoutsView: React.FC<WorkoutsViewProps> = ({ onStartActiveMode })
     if (routineFilter === 'all') return true;
     if (routineFilter === 'abs') return r.targetZone === 'abs';
     if (routineFilter === 'cardio') return r.targetZone === 'cardio';
-    return r.targetZone !== 'abs' && r.targetZone !== 'cardio';
+    if (routineFilter === 'upper_combos') {
+      return (
+        r.targetZone === 'back' ||
+        r.targetZone === 'pecs' ||
+        r.targetZone === 'arms' ||
+        r.targetZone === 'dos_pecs' ||
+        r.targetZone === 'pecs_bras' ||
+        r.targetZone === 'back_sculpt_order'
+      );
+    }
+    if (routineFilter === 'lower') {
+      return r.targetZone === 'lower-body' || r.targetZone === 'glutes' || r.targetZone === 'lower';
+    }
+    return true;
   });
 
   return (
@@ -516,7 +543,8 @@ export const WorkoutsView: React.FC<WorkoutsViewProps> = ({ onStartActiveMode })
             {(
               [
                 { id: 'all', label: 'Toutes' },
-                { id: 'strength', label: 'Musculation' },
+                { id: 'upper_combos', label: 'Dos, Pecs & Bras (Dos/Pecs, Pecs/Bras)' },
+                { id: 'lower', label: 'Bas du corps & Fessiers' },
                 { id: 'abs', label: 'Circuits Abdos' },
                 { id: 'cardio', label: 'Circuits Cardio' },
               ] as const
@@ -542,7 +570,7 @@ export const WorkoutsView: React.FC<WorkoutsViewProps> = ({ onStartActiveMode })
           <div className="space-y-2.5">
             {filteredRoutines.map((routine) => {
               const totalSets = routine.exercises.reduce((acc, ex) => acc + ex.sets.length, 0);
-              const badgeLabel = getRoutineBadgeLabel(routine.targetZone);
+              const badgeLabel = getRoutineBadgeLabel(routine.targetZone, routine.name);
               const iconName = getRoutineIcon(routine.targetZone);
 
               return (

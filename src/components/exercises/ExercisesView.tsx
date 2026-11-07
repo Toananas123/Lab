@@ -20,13 +20,14 @@ import { LegPressGuideModal, LegPressGuideContent } from './LegPressGuideModal';
 import { CustomExerciseModal } from './CustomExerciseModal';
 import { MachineIllustration } from './MachineIllustration';
 import { LegDayStructureContent } from '../workouts/LegDayStructureCard';
+import { BackStructureContent } from '../workouts/BackStructureCard';
 import { PersonalGearReminder } from '../common/PersonalGearReminder';
 import { getEquipmentBadge } from '../../utils/equipmentBadge';
 import { StreamlineIcon, getCategoryStreamlineIcon } from '../ui/StreamlineIcon';
 
 interface ExercisesViewProps {
   initialCategory?: MuscleCategory | 'favorites';
-  onAddToActiveWorkout?: (exercise: Exercise) => void;
+  onAddToActiveWorkout?: (exercise?: Exercise) => void;
 }
 
 export const ExercisesView: React.FC<ExercisesViewProps> = ({
@@ -40,6 +41,8 @@ export const ExercisesView: React.FC<ExercisesViewProps> = ({
     isFavorite,
     getPreviousPerformance,
     deleteCustomExercise,
+    routines,
+    startWorkout,
   } = useWorkout();
 
   const [selectedCategory, setSelectedCategory] = useState<MuscleCategory | 'all'>(
@@ -52,6 +55,7 @@ export const ExercisesView: React.FC<ExercisesViewProps> = ({
   const [isLegPressGuideOpen, setIsLegPressGuideOpen] = useState(false);
   const [isCustomModalOpen, setIsCustomModalOpen] = useState(false);
   const [activeLowerGuide, setActiveLowerGuide] = useState<'legday' | 'legpress' | null>(null);
+  const [isBackGuideOpen, setIsBackGuideOpen] = useState<boolean>(true);
   const [selectedFootPlacement, setSelectedFootPlacement] = useState('high-wide');
 
   const categories: { id: MuscleCategory | 'all' | 'fav'; label: string; count: number }[] = [
@@ -64,6 +68,11 @@ export const ExercisesView: React.FC<ExercisesViewProps> = ({
       id: 'back',
       label: 'Dos',
       count: allExercises.filter((e) => e.category === 'back').length,
+    },
+    {
+      id: 'pecs',
+      label: 'Pecs',
+      count: allExercises.filter((e) => e.category === 'pecs').length,
     },
     {
       id: 'arms',
@@ -86,6 +95,33 @@ export const ExercisesView: React.FC<ExercisesViewProps> = ({
       count: favorites.length,
     },
   ];
+
+  const handleLaunchBackSculptRoutine = () => {
+    const routine =
+      routines.find((r) => r.id === 'routine-back-sculpt-no-widen') ||
+      routines.find((r) => r.targetZone === 'back');
+    if (!routine) return;
+    const clonedExercises = routine.exercises.map((ex, exIdx) => ({
+      ...ex,
+      id: `ex_${Date.now()}_${exIdx}`,
+      sets: ex.sets.map((s, sIdx) => ({
+        ...s,
+        id: `s_${Date.now()}_${sIdx}`,
+        completed: false,
+        actualWeight: s.targetWeight,
+        actualReps: s.targetReps,
+      })),
+    }));
+    startWorkout({
+      name: routine.name,
+      exercises: clonedExercises,
+      finisher: routine.finisher,
+      notes: routine.notes,
+    });
+    if (onAddToActiveWorkout) {
+      onAddToActiveWorkout();
+    }
+  };
 
   const availableSpecificMuscles =
     selectedCategory === 'all'
@@ -118,8 +154,8 @@ export const ExercisesView: React.FC<ExercisesViewProps> = ({
 
   return (
     <div className="space-y-4 pb-12 animate-in fade-in duration-150">
-      {/* 1. Large Bold Header + Top-Right Circular Icon Action */}
-      <div className="flex items-center justify-between pt-1">
+      {/* 1. Large Bold Header + Top-Right Create Custom Exercise Button */}
+      <div className="flex items-center justify-between pt-1 gap-3">
         <h1 className="text-3xl sm:text-4xl font-display font-bold tracking-tight text-[#2B091C]">
           Exercices
         </h1>
@@ -127,10 +163,11 @@ export const ExercisesView: React.FC<ExercisesViewProps> = ({
         <div className="flex items-center gap-2">
           <button
             onClick={() => setIsCustomModalOpen(true)}
-            className="w-10 h-10 rounded-full bg-[#831843] hover:bg-[#3B0726] text-white flex items-center justify-center transition-colors"
-            title="Ajouter un exercice"
+            className="px-4 py-2.5 rounded-full bg-[#831843] hover:bg-[#3B0726] text-white text-xs font-bold flex items-center gap-1.5 shadow-2xs transition-all active:scale-95 cursor-pointer"
+            title="Créer mon propre exercice avec une fiche détaillée automatique"
           >
-            <Plus className="w-5 h-5" />
+            <Plus className="w-4 h-4 stroke-[2.5]" />
+            <span>Ajouter mon exo</span>
           </button>
         </div>
       </div>
@@ -156,7 +193,7 @@ export const ExercisesView: React.FC<ExercisesViewProps> = ({
                   setSelectedSpecificMuscle('all');
                 }
               }}
-              className={`pb-2.5 flex items-center gap-1.5 whitespace-nowrap text-sm transition-colors border-b-2 -mb-[1px] ${
+              className={`pb-2.5 flex items-center gap-1.5 whitespace-nowrap text-sm transition-colors border-b-2 -mb-[1px] cursor-pointer ${
                 isSelected
                   ? 'border-[#831843] font-bold text-[#2B091C]'
                   : 'border-transparent font-medium text-[#8C6D7E] hover:text-[#2B091C]'
@@ -194,7 +231,7 @@ export const ExercisesView: React.FC<ExercisesViewProps> = ({
           <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5 scrollbar-none">
             <button
               onClick={() => setSelectedSpecificMuscle('all')}
-              className={`px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all ${
+              className={`px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all cursor-pointer ${
                 selectedSpecificMuscle === 'all'
                   ? 'bg-[#831843] text-white'
                   : 'bg-[#F6EDF2] text-[#7A616F] hover:bg-[#F1E2EA]'
@@ -208,7 +245,7 @@ export const ExercisesView: React.FC<ExercisesViewProps> = ({
                 <button
                   key={muscle.id}
                   onClick={() => setSelectedSpecificMuscle(muscle.id)}
-                  className={`px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all ${
+                  className={`px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all cursor-pointer ${
                     isSelected
                       ? 'bg-[#831843] text-white'
                       : 'bg-[#F6EDF2] text-[#7A616F] hover:bg-[#F1E2EA]'
@@ -308,6 +345,48 @@ export const ExercisesView: React.FC<ExercisesViewProps> = ({
                 selectedPlacement={selectedFootPlacement}
                 onSelectPlacement={setSelectedFootPlacement}
               />
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Encadré Guide Dos : « Tips pour un dos dessiné sans l’élargir » (exactement comme le guide Bas du corps) */}
+      {!onlyFavorites && selectedCategory === 'back' && (
+        <div className="space-y-2.5">
+          <button
+            type="button"
+            onClick={() => setIsBackGuideOpen((prev) => !prev)}
+            className={`w-full rounded-[26px] border p-3.5 sm:p-4 flex items-center justify-between gap-3 text-left transition-all cursor-pointer ${
+              isBackGuideOpen
+                ? 'bg-[#F1E2EA] border-[#EC4899]/50 shadow-2xs'
+                : 'bg-[#F6EDF2] border-[#FBCFE8] hover:bg-[#F1E2EA]'
+            }`}
+          >
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-2xl bg-white shadow-2xs flex items-center justify-center text-[#831843] shrink-0">
+                <StreamlineIcon name="dumbbell" className="w-5 h-5 text-[#EC4899]" />
+              </div>
+              <div className="min-w-0">
+                <span className="font-compact text-[10px] font-extrabold uppercase tracking-wider text-[#EC4899] block">
+                  Guide intégré · Dos (Ordre 1-2-3-4)
+                </span>
+                <h2 className="font-display font-bold text-sm sm:text-base text-[#2B091C] leading-snug">
+                  Tips pour un dos dessiné sans l’élargir :
+                </h2>
+              </div>
+            </div>
+            <span className="w-8 h-8 rounded-full bg-white text-[#831843] flex items-center justify-center shrink-0 shadow-2xs">
+              {isBackGuideOpen ? (
+                <ChevronUp className="w-4 h-4" />
+              ) : (
+                <ChevronDown className="w-4 h-4" />
+              )}
+            </span>
+          </button>
+
+          {isBackGuideOpen && (
+            <div className="rounded-[26px] bg-[#F6EDF2] border border-[#FBCFE8] p-4 animate-in fade-in duration-150">
+              <BackStructureContent onLaunchBackRoutine={handleLaunchBackSculptRoutine} />
             </div>
           )}
         </div>

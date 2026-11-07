@@ -675,22 +675,181 @@ export const DEFAULT_EXERCISES: Exercise[] = [
     defaultRestSeconds: 90,
   },
 
+  {
+    id: 'wide-grip-seated-cable-row',
+    name: 'Tirage horizontal prise large',
+    category: 'back',
+    specificMuscle: 'milieu-dos',
+    primaryMuscle: 'Milieu du dos (Rhomboïdes & Trapèzes moyens)',
+    secondaryMuscles: ['Arrière d’épaule'],
+    equipment: 'cable',
+    description: 'L’exercice #1 pour dessiner le milieu du dos sans élargir la taille : la prise large avec coudes ouverts cible l’épaisseur et le relief inter-scapulaire.',
+    startingPosition: 'Assise face à la poulie basse ou médiane, barre longue tenue en prise large pronation, pieds calés, buste fier.',
+    steps: [
+      'Saisissez la barre plus large que la largeur des épaules.',
+      'Tirez la barre vers le haut de l’abdomen / bas de la poitrine en gardant les coudes bien ouverts vers l’extérieur.',
+      'Pincez puissamment vos omoplates au sommet pendant 1 seconde.',
+      'Accompagnez le retour avec contrôle en laissant le milieu du dos s’étirer.'
+    ],
+    breathing: 'Expirez en tirant vers le buste, inspirez lors du retour contrôlé.',
+    formTips: [
+      'Le point commun des exos milieu du dos : gardez les coudes ouverts (45° à 80°) pour ne pas solliciter excessivement le grand dorsal.',
+      'Ne balancez pas le buste en arrière.'
+    ],
+    commonMistakes: ['Coller les coudes contre les côtes (ce qui bascule le travail sur le grand dorsal).'],
+    defaultSets: 4,
+    defaultReps: '10-12',
+    defaultRestSeconds: 75,
+    machineSetup: {
+      diagramType: 'seated_row',
+      seatSetting: 'Banc de tirage horizontal, poulie à hauteur du sternum ou basse',
+      footPosition: 'Pieds à plat sur les cales, genoux légèrement fléchis',
+      gripWidth: 'Barre longue tenue en prise pronation large (au-delà des épaules)',
+      safetyCue: 'Coudes hauts et ouverts, omoplates resserrées sans hausser les épaules',
+    },
+  },
+  {
+    id: 'wide-grip-row-barbell-smith',
+    name: 'Rowing prise large (libre ou Smith)',
+    category: 'back',
+    specificMuscle: 'milieu-dos',
+    primaryMuscle: 'Milieu du dos & Rhomboïdes',
+    secondaryMuscles: ['Arrière d’épaule', 'Trapèzes moyens'],
+    equipment: 'barbell',
+    description: 'Rowing buste penché avec prise large (barre libre ou Smith Machine) et coudes ouverts pour sculpter le haut et le milieu du dos sans élargir.',
+    startingPosition: 'Debout buste penché à 45-60°, dos bien plat, barre libre ou guidée (Smith) tenue en prise large pronation.',
+    steps: [
+      'Gainez fermement la sangle abdominale et poussez les hanches vers l’arrière.',
+      'Tirez la barre vers le bas de la poitrine en ouvrant les coudes sur les côtés.',
+      'Contractez le milieu du dos 1 seconde en haut.',
+      'Redescendez avec contrôle sans arrondir les lombaires.'
+    ],
+    breathing: 'Expirez à la montée, inspirez à la descente.',
+    formTips: ['Tirez vers le sternum avec les coudes ouverts pour isoler le relief du milieu du dos.'],
+    commonMistakes: ['Tirer vers le nombril coudes serrés ou donner un coup de rein.'],
+    defaultSets: 3,
+    defaultReps: '10-12',
+    defaultRestSeconds: 75,
+    machineSetup: {
+      diagramType: 'squat_rack',
+      seatSetting: 'Barre libre ou cadre guidé Smith Machine',
+      footPosition: 'Pieds largeur d’épaules, genoux déverrouillés',
+      gripWidth: 'Prise pronation large (1,5x largeur d’épaules)',
+      safetyCue: 'Dos plat immobile, coudes ouverts à 60-75°',
+    },
+  },
+  {
+    id: 'face-pull-chin',
+    name: 'Face pull (visant le menton)',
+    category: 'back',
+    specificMuscle: 'milieu-dos',
+    primaryMuscle: 'Milieu du dos & Trapèzes moyens',
+    secondaryMuscles: ['Arrière d’épaule', 'Rhomboïdes'],
+    equipment: 'cable',
+    description: 'Variante du Face pull tirée vers le menton / cou avec coudes ouverts pour cibler le galbe du milieu du dos et ouvrir la posture.',
+    startingPosition: 'Assise au sol ou debout face à la poulie haute, corde tenue à deux mains, buste légèrement incliné.',
+    steps: [
+      'Tirez la corde en direction du menton en ouvrant grand les coudes sur les côtés.',
+      'Resserrez fortement les omoplates en fin de course.',
+      'Relâchez lentement en contrôlant la charge.'
+    ],
+    breathing: 'Expirez en tirant vers le menton, inspirez au retour.',
+    formTips: ['Viser le menton sollicite davantage le milieu du dos, tandis que viser le front cible plus l’arrière d’épaule.'],
+    commonMistakes: ['Tirer avec les poignets cassés ou hausser les trapèzes supérieurs.'],
+    defaultSets: 3,
+    defaultReps: '12-15',
+    defaultRestSeconds: 60,
+    machineSetup: {
+      diagramType: 'cable_high',
+      seatSetting: 'Poulie réglée en position haute, corde attachée',
+      footPosition: 'Assise au sol jambes fléchies ou debout un pied devant l’autre',
+      gripWidth: 'Prise neutre aux extrémités de la corde',
+      safetyCue: 'Coudes ouverts à hauteur d’épaules, trajectoire vers le menton',
+    },
+  },
+  {
+    id: 'close-grip-seated-cable-row',
+    name: 'Tirage horizontal prise serrée',
+    category: 'back',
+    specificMuscle: 'grand-dorsal',
+    primaryMuscle: 'Grand dorsal',
+    secondaryMuscles: ['Milieu du dos', 'Biceps'],
+    equipment: 'cable',
+    description: 'Tirage assis avec poignée triangle serrée : les coudes glissent le long des côtes pour tonifier le grand dorsal.',
+    startingPosition: 'Assise face à la poulie basse, pieds calés, poignée serrée en V tenue à deux mains.',
+    steps: [
+      'Redressez le buste et abaissez les épaules loin des oreilles.',
+      'Tirez la poignée vers le bas du ventre en gardant les coudes collés aux flancs.',
+      'Serrez les dorsaux 1 seconde puis contrôlez le retour.'
+    ],
+    breathing: 'Expirez au tirage, inspirez au retour.',
+    formTips: ['Un seul exercice de grand dorsal dans ta séance suffit si tu ne veux pas trop élargir ton dos.'],
+    commonMistakes: ['Se balancer excessivement d’avant en arrière.'],
+    defaultSets: 3,
+    defaultReps: '10-12',
+    defaultRestSeconds: 75,
+  },
+  {
+    id: 'single-arm-cable-pulldown',
+    name: 'Tirage unilatéral à la poulie',
+    category: 'back',
+    specificMuscle: 'grand-dorsal',
+    primaryMuscle: 'Grand dorsal (Unilatéral)',
+    secondaryMuscles: ['Biceps'],
+    equipment: 'cable',
+    description: 'Tirage à un bras à la poulie haute ou moyenne pour une connexion neuromusculaire maximale sur le grand dorsal.',
+    startingPosition: 'Assise ou un genou au sol face à la poulie haute, poignée simple dans une main.',
+    steps: [
+      'Laissez le bras s’étirer vers le haut sans décoller l’épaule.',
+      'Tirez le coude vers la hanche en restant bien gainée.',
+      'Contractez le dorsal en bas puis freinez la remontée.'
+    ],
+    breathing: 'Expirez en tirant, inspirez en remontant.',
+    formTips: ['Placez votre main libre sur votre flanc pour sentir le dorsal travailler.'],
+    commonMistakes: ['Tourner le buste en tirant.'],
+    defaultSets: 3,
+    defaultReps: '10-12 / côté',
+    defaultRestSeconds: 60,
+  },
+  {
+    id: 'lumberjack-dumbbell-row',
+    name: 'Tirage bûcheron (Rowing haltère unilatéral)',
+    category: 'back',
+    specificMuscle: 'grand-dorsal',
+    primaryMuscle: 'Grand dorsal & Milieu du dos',
+    secondaryMuscles: ['Biceps', 'Arrière d’épaule'],
+    equipment: 'dumbbell',
+    description: 'Le classique tirage bûcheron avec un haltère en appui sur un banc pour travailler le grand dorsal en amplitude complète.',
+    startingPosition: 'Main et genou d’appui sur un banc plat, dos droit, haltère tenu bras tendu vers le sol.',
+    steps: [
+      'Tirez l’haltère en arc de cercle vers votre hanche (comme pour démarrer une tronçonneuse).',
+      'Gardez le coude proche du corps.',
+      'Redescendez lentement en étirant sous l’omoplate.'
+    ],
+    breathing: 'Expirez à la montée, inspirez à la descente.',
+    formTips: ['Viser la poche de pantalon avec le coude recrute parfaitement le dorsal.'],
+    commonMistakes: ['Hausser l’épaule vers l’oreille.'],
+    defaultSets: 3,
+    defaultReps: '10-12 / côté',
+    defaultRestSeconds: 60,
+  },
+
   // ==========================================
   // 7. LOMBAIRES (Lower Back)
   // ==========================================
   {
     id: 'hyperextensions-bench',
-    name: 'Banc à lombaires 45° (Hyperextensions)',
+    name: 'Back Extension (Banc à lombaires 45°)',
     category: 'back',
     specificMuscle: 'lombaires',
     primaryMuscle: 'Lombaires (Érecteurs du rachis)',
     secondaryMuscles: ['Fessiers', 'Ischio-jambiers'],
     equipment: 'bodyweight',
-    description: 'Renforcement postural essentiel pour stabiliser le bassin et prévenir les douleurs du bas du dos.',
+    description: 'Le seul et l’unique exercice indispensable en fin de séance dos pour renforcer les lombaires, affiner le bas du dos et galber la chute de reins.',
     startingPosition: 'Bassin calé contre le coussin supérieur (sous la crête iliaque), talons calés contre les boudins inférieurs.',
     steps: [
-      'Croisez les bras sur la poitrine ou tenez un disque léger.',
-      'Fléchissez le buste vers le bas jusqu’à 60-70°.',
+      'Croisez les bras sur la poitrine ou tenez un disque/barre légère.',
+      'Fléchissez le buste vers le bas jusqu’à 60-70° en gardant le contrôle.',
       'Remontez en contractant les lombaires et les fessiers jusqu’à aligner le tronc avec les jambes.',
       'Ne partez pas en hyper-extension arrière.'
     ],
@@ -729,21 +888,21 @@ export const DEFAULT_EXERCISES: Exercise[] = [
   // ==========================================
   {
     id: 'face-pull-rope',
-    name: 'Face Pull à la corde poulie haute',
+    name: 'Facepull à la corde (viser le front)',
     category: 'back',
     specificMuscle: 'trapezes-arriere-epaule',
     primaryMuscle: 'Arrière d’épaule & Trapèzes moyens/inférieurs',
     secondaryMuscles: ['Coiffe des rotateurs'],
     equipment: 'cable',
-    description: 'Le mouvement d’or pour la santé des épaules et l’ouverture de la cage thoracique (adieu épaules enroulées).',
+    description: 'En visant le front avec la corde, vous isolez l’arrière d’épaule et ouvrez la cage thoracique (adieu épaules enroulées).',
     startingPosition: 'Poulie réglée à hauteur du visage, corde tenue en prise neutre, reculez d’un pas.',
     steps: [
-      'Tirez la corde vers votre nez/front en écartant les coudes bien haut.',
+      'Tirez la corde directement vers votre front en écartant les coudes bien haut.',
       'En fin de course, effectuez une rotation externe : les poings montent au-dessus des coudes.',
       'Pincez l’arrière des épaules pendant 1 seconde avant de relâcher lentement.'
     ],
-    breathing: 'Expirez en tirant vers le visage, inspirez au retour.',
-    formTips: ['Pensez à tirer avec les coudes hauts et écartés.'],
+    breathing: 'Expirez en tirant vers le front, inspirez au retour.',
+    formTips: ['Pensez à viser le front avec le milieu de la corde pour recruter 100% de l’arrière d’épaule.'],
     commonMistakes: ['Prendre trop lourd et se pencher en arrière pour compenser.'],
     defaultSets: 3,
     defaultReps: '15',
@@ -751,7 +910,7 @@ export const DEFAULT_EXERCISES: Exercise[] = [
   },
   {
     id: 'reverse-pec-deck',
-    name: 'Oiseau à la machine (Reverse Pec Deck)',
+    name: 'Oiseau inversé à la machine (Reverse Pec Deck)',
     category: 'back',
     specificMuscle: 'trapezes-arriere-epaule',
     primaryMuscle: 'Deltoïde postérieur (Arrière d’épaule)',
@@ -773,7 +932,7 @@ export const DEFAULT_EXERCISES: Exercise[] = [
   },
   {
     id: 'dumbbell-rear-delt-fly',
-    name: 'Élévations postérieures aux haltères buste penché',
+    name: 'Élévations arrières aux haltères buste penché',
     category: 'back',
     specificMuscle: 'trapezes-arriere-epaule',
     primaryMuscle: 'Arrière d’épaule & Trapèzes',
@@ -792,6 +951,231 @@ export const DEFAULT_EXERCISES: Exercise[] = [
     defaultSets: 3,
     defaultReps: '15',
     defaultRestSeconds: 60,
+  },
+
+  // ==========================================
+  // 8b. PECTORAUX & GALBE DU BUSTE (Pecs)
+  // ==========================================
+  {
+    id: 'incline-dumbbell-bench-press',
+    name: 'Développé incliné aux haltères (Haut des pecs)',
+    category: 'pecs',
+    specificMuscle: 'pecs-haut',
+    primaryMuscle: 'Haut des pectoraux (Faisceau claviculaire)',
+    secondaryMuscles: ['Épaule avant', 'Triceps'],
+    equipment: 'dumbbell',
+    description: 'L’exercice numéro 1 pour tonifier le haut du buste, galber le décolleté et raffermir la poitrine avec une amplitude naturelle.',
+    startingPosition: 'Assise sur un banc incliné à 30°, pieds bien ancrés au sol, un haltère dans chaque main à hauteur des clavicules.',
+    steps: [
+      'Resserrez vos omoplates contre le dossier et sortez légèrement la poitrine.',
+      'Poussez les haltères vers le plafond en les rapprochant légèrement en haut sans les faire claquer.',
+      'Contrôlez la descente sur 2 secondes en gardant les coudes ouverts à 45-60° (jamais à 90°).',
+      'Repoussez dès que les haltères arrivent à hauteur de la poitrine.'
+    ],
+    breathing: 'Inspirez en descendant les haltères, expirez pendant la poussée.',
+    formTips: [
+      'Une inclinaison de 30° (1 ou 2 crans) suffit : au-delà de 45°, ce sont les épaules qui prennent tout le travail.',
+      'Rentrez légèrement les coudes vers l’intérieur pour protéger vos articulations.'
+    ],
+    commonMistakes: [
+      'Ouvrir les coudes à 90° perpendiculaires au buste.',
+      'Décoller les fessiers du banc.'
+    ],
+    avoidTips: ['Ne rebondissez jamais en bas du mouvement.'],
+    defaultSets: 4,
+    defaultReps: '10-12',
+    defaultRestSeconds: 75,
+    machineSetup: {
+      diagramType: 'bench_incline',
+      seatSetting: 'Dossier incliné à 30° (cran 2 ou 3), assise légèrement relevée',
+      footPosition: 'Pieds bien à plat au sol de chaque côté du banc',
+      gripWidth: 'Prise pronation ou semi-neutre à 45°, poignets fermes et alignés',
+      safetyCue: 'Omoplates serrées contre le banc, coudes fléchis à 45-60° du corps',
+    },
+  },
+  {
+    id: 'flat-dumbbell-bench-press',
+    name: 'Développé couché aux haltères',
+    category: 'pecs',
+    specificMuscle: 'pecs-global',
+    primaryMuscle: 'Pectoraux (Faisceau moyen)',
+    secondaryMuscles: ['Triceps', 'Deltoïde antérieur'],
+    equipment: 'dumbbell',
+    description: 'Mouvement fondamental de poussée horizontale aux haltères pour renforcer les pectoraux et les bras en symétrie parfaite.',
+    startingPosition: 'Allongée sur un banc plat, pieds ancrés au sol, haltères tenus de chaque côté de la poitrine.',
+    steps: [
+      'Plaquez les épaules contre le banc en serrant les omoplates.',
+      'Poussez les haltères verticalement au-dessus du milieu de la poitrine.',
+      'Gardez une légère flexion des coudes en haut pour maintenir la tension.',
+      'Redescendez lentement jusqu’à ce que vos coudes passent légèrement sous le niveau du banc.'
+    ],
+    breathing: 'Inspirez à la descente, expirez en poussant.',
+    formTips: ['Gardez les poignets bien droits au-dessus des coudes tout au long de la poussée.'],
+    commonMistakes: ['Entrechoquer les haltères en haut et perdre la tension musculaire.'],
+    avoidTips: ['Ne décollez pas la tête ni les fessiers du banc pendant l’effort.'],
+    defaultSets: 4,
+    defaultReps: '10-12',
+    defaultRestSeconds: 75,
+    machineSetup: {
+      diagramType: 'bench_flat',
+      seatSetting: 'Banc plat horizontal stable',
+      footPosition: 'Pieds à plat au sol, poussée ferme dans les talons',
+      gripWidth: 'Prise pronation, coudes orientés à 45° du buste',
+      safetyCue: 'Cage thoracique ouverte, épaules basses et fixées au banc',
+    },
+  },
+  {
+    id: 'chest-press-machine',
+    name: 'Presse à pectoraux assise (Chest Press)',
+    category: 'pecs',
+    specificMuscle: 'pecs-global',
+    primaryMuscle: 'Pectoraux complets & Triceps',
+    secondaryMuscles: ['Épaule avant'],
+    equipment: 'machine',
+    description: 'Machine guidée convergente idéale pour travailler les pectoraux en toute sécurité avec une trajectoire fluide et stable.',
+    startingPosition: 'Assise dans la machine, dos plaqué au dossier, poignées réglées à hauteur du milieu de la poitrine.',
+    steps: [
+      'Saisissez les poignées et abaissez vos épaules.',
+      'Poussez vers l’avant jusqu’à extension presque complète des bras (sans verrouiller les coudes).',
+      'Contractez les pectoraux 1 seconde en fin de poussée.',
+      'Freinez le retour sur 2 secondes sans laisser les poids reposer.'
+    ],
+    breathing: 'Expirez en poussant, inspirez en revenant.',
+    formTips: ['Réglez la hauteur du siège pour que les poignées soient alignées avec le milieu du sternum, pas avec les épaules.'],
+    commonMistakes: ['Siège trop bas qui met les épaules en position vulnérable.'],
+    avoidTips: ['Ne décollez pas le haut du dos du dossier en fin de poussée.'],
+    defaultSets: 3,
+    defaultReps: '10-12',
+    defaultRestSeconds: 75,
+    machineSetup: {
+      diagramType: 'seated_row',
+      seatSetting: 'Siège réglé pour aligner les poignées avec le milieu de la poitrine',
+      footPosition: 'Pieds posés à plat au sol ou sur le repose-pieds de démarrage',
+      gripWidth: 'Prise horizontale (pronation) ou verticale (neutre)',
+      safetyCue: 'Omoplates collées au dossier, ne jamais verrouiller brusquement les coudes',
+    },
+  },
+  {
+    id: 'pec-deck-butterfly',
+    name: 'Écarté à la machine (Pec Deck / Butterfly)',
+    category: 'pecs',
+    specificMuscle: 'pecs-isolation',
+    primaryMuscle: 'Pectoraux (Isolation & Galbe central)',
+    secondaryMuscles: ['Deltoïde antérieur'],
+    equipment: 'machine',
+    description: 'Isolation pure des pectoraux sans solliciter les triceps, idéal pour tonifier et dessiner le maintien de la poitrine.',
+    startingPosition: 'Assise le dos bien droit contre le dossier, bras ouverts tenant les poignées à hauteur d’épaules.',
+    steps: [
+      'Gardez les coudes légèrement fléchis et à hauteur de poitrine.',
+      'Rassemblez les poignées devant vous en décrivant un grand arc de cercle (comme pour enlacer un arbre).',
+      'Serrez les pectoraux pendant 1 à 2 secondes lorsque les mains se rejoignent.',
+      'Ouvrez lentement les bras jusqu’à sentir un étirement agréable sur les côtés de la poitrine.'
+    ],
+    breathing: 'Expirez en refermant les bras, inspirez en les ouvrant.',
+    formTips: ['Imaginez que vous rapprochez vos coudes l’un de l’autre plutôt que vos mains.'],
+    commonMistakes: ['Tirer avec les épaules en avant en décollant le dos du siège.'],
+    avoidTips: ['Ne réglez pas les bras trop en arrière au départ pour préserver l’avant de l’épaule.'],
+    defaultSets: 3,
+    defaultReps: '12-15',
+    defaultRestSeconds: 60,
+    machineSetup: {
+      diagramType: 'seated_row',
+      seatSetting: 'Hauteur d’assise permettant d’avoir les poignées au niveau du sternum',
+      footPosition: 'Pieds à plat au sol, bassin calé au fond du siège',
+      gripWidth: 'Bras semi-fléchis sur les poignées longues ou avant-bras sur les coussins',
+      safetyCue: 'Limiter l’ouverture arrière à la ligne du buste pour protéger la coiffe des rotateurs',
+    },
+  },
+  {
+    id: 'cable-chest-fly',
+    name: 'Écartés à la poulie vis-à-vis (Cable Fly)',
+    category: 'pecs',
+    specificMuscle: 'pecs-isolation',
+    primaryMuscle: 'Pectoraux (Tension continue)',
+    secondaryMuscles: ['Épaule avant', 'Sangle abdominale'],
+    equipment: 'cable',
+    description: 'Les poulies maintiennent une tension constante du début à la fin du mouvement pour un travail sculptant ultra-efficace.',
+    startingPosition: 'Debout au centre du vis-à-vis, poulies réglées à hauteur d’épaules, un pied devant l’autre pour la stabilité.',
+    steps: [
+      'Saisissez une poignée dans chaque main et avancez d’un pas pour mettre les câbles sous tension.',
+      'Bras légèrement fléchis, ramenez les mains l’une contre l’autre devant votre poitrine.',
+      'Marquez 1 seconde de contraction maximale les mains jointes.',
+      'Accompagnez l’ouverture des bras avec contrôle.'
+    ],
+    breathing: 'Expirez en rejoignant les mains, inspirez à l’ouverture.',
+    formTips: ['Variez la hauteur des poulies : poulies basses pour le haut des pecs, poulies hautes pour le bas et le galbe.'],
+    commonMistakes: ['Transformer l’écarté en développé en pliant complètement les coudes.'],
+    avoidTips: ['Ne laissez pas les câbles tirer vos bras violemment vers l’arrière.'],
+    defaultSets: 3,
+    defaultReps: '12-15',
+    defaultRestSeconds: 60,
+    machineSetup: {
+      diagramType: 'cable_high',
+      seatSetting: 'Deux poulies réglées à la même hauteur (hauteur d’épaules ou haute)',
+      footPosition: 'Fente avant légère (un pied devant l’autre) pour stabiliser le tronc',
+      gripWidth: 'Poignées simples tenues paumes face à face',
+      safetyCue: 'Angle des coudes fixe tout au long de l’arc de cercle',
+    },
+  },
+  {
+    id: 'barbell-bench-press',
+    name: 'Développé couché à la barre (ou Smith Machine)',
+    category: 'pecs',
+    specificMuscle: 'pecs-global',
+    primaryMuscle: 'Pectoraux, Triceps & Épaules',
+    secondaryMuscles: ['Grand dentelé'],
+    equipment: 'barbell',
+    description: 'Le grand classique polyarticulaire du haut du corps pour développer la force globale du buste et des bras.',
+    startingPosition: 'Allongée sur le banc sous la barre (yeux à la verticale de la barre), pieds ancrés au sol, prise plus large que les épaules.',
+    steps: [
+      'Décrochez la barre bras tendus et stabilisez-la au-dessus des épaules.',
+      'Descendez la barre avec contrôle jusqu’à effleurer le milieu de la poitrine.',
+      'Poussez fermement pour remonter la barre à la position initiale.',
+    ],
+    breathing: 'Inspirez à la descente, expirez en poussant la barre.',
+    formTips: ['La version à la Smith Machine (barre guidée) est idéale pour progresser en toute sécurité sans pareur.'],
+    commonMistakes: ['Faire rebondir la barre sur le sternum.'],
+    avoidTips: ['Ne soulevez pas les pieds du sol si vous cherchez une stabilité maximale.'],
+    defaultSets: 4,
+    defaultReps: '8-10',
+    defaultRestSeconds: 90,
+    machineSetup: {
+      diagramType: 'bench_flat',
+      seatSetting: 'Banc horizontal centré sous les crochets du rack ou de la Smith Machine',
+      footPosition: 'Pieds ancrés à plat au sol',
+      gripWidth: 'Prise pronation symétrique (environ 1,5x largeur d’épaules)',
+      safetyCue: 'Omoplates resserrées, trajectoire contrôlée jusqu’au milieu du buste',
+    },
+  },
+  {
+    id: 'incline-push-ups',
+    name: 'Pompes inclinées sur banc (ou au sol)',
+    category: 'pecs',
+    specificMuscle: 'pecs-haut',
+    primaryMuscle: 'Pectoraux, Triceps & Gainage',
+    secondaryMuscles: ['Épaules', 'Abdominaux'],
+    equipment: 'bodyweight',
+    description: 'Pompes avec les mains surélevées sur un banc ou une barre guidée : accessible, gainant et parfait pour tonifier le buste et les bras.',
+    startingPosition: 'Mains posées sur le rebord d’un banc stable (un peu plus large que les épaules), corps aligné en planche des épaules aux talons.',
+    steps: [
+      'Engagez les abdos et les fessiers pour former une ligne droite rigide.',
+      'Fléchissez les coudes (orientés à 45° vers l’arrière) pour amener la poitrine près du banc.',
+      'Repoussez dynamiquement sur vos paumes jusqu’à tendre les bras.'
+    ],
+    breathing: 'Inspirez en descendant, expirez en repoussant.',
+    formTips: ['Plus le support est haut, plus l’exercice est accessible ; baissez le support au fil des semaines pour progresser !'],
+    commonMistakes: ['Laisser le bassin s’affaisser vers le bas ou monter les fesses en pyramide.'],
+    avoidTips: ['N’écartez pas les coudes au niveau des oreilles.'],
+    defaultSets: 3,
+    defaultReps: '10-15',
+    defaultRestSeconds: 60,
+    machineSetup: {
+      diagramType: 'bench_flat',
+      seatSetting: 'Banc plat fixe ou barre de Smith Machine réglée à hauteur de hanche',
+      footPosition: 'Sur les pointes de pieds, jambes tendues et gainées',
+      gripWidth: 'Mains posées à plat un peu plus large que les épaules',
+      safetyCue: 'Gainage abdominal constant pour protéger le bas du dos',
+    },
   },
 
   // ==========================================
@@ -1697,6 +2081,19 @@ export const WARMUP_COOLDOWN_GUIDES: Record<string, { warmup: string[]; cooldown
       'Enroulement des épaules vers l’arrière et respiration',
     ]
   },
+  'pecs': {
+    warmup: [
+      'Moulinets d’épaules et ouverture dynamique de la cage thoracique - 15 répétitions',
+      'Rotations externes à l’élastique pour chauffer la coiffe des rotateurs - 15 par bras',
+      '10 Pompes inclinées mains sur banc en contrôlant la descente',
+      '1 série légère à 50% sur le premier développé',
+    ],
+    cooldown: [
+      'Étirement des pectoraux bras appuyé contre un montant de porte - 45s par côté',
+      'Ouverture thoracique mains croisées dans le dos - 45s',
+      'Relâchement des épaules et des triceps',
+    ]
+  },
   'arms': {
     warmup: [
       'Moulinets de bras avant et arrière - 15 répétitions',
@@ -1865,6 +2262,258 @@ export const STARTER_ROUTINES: Routine[] = [
     ]
   },
   {
+    id: 'routine-back-sculpt-no-widen',
+    name: 'Dos Dessiné sans l’Élargir (Ordre 1-2-3-4)',
+    targetZone: 'back',
+    description: 'La méthode exacte en 4 étapes dans l’ordre pour sculpter les détails du dos sans élargir la taille : 1. Milieu du dos (coudes ouverts) → 2. Grand dorsal (1 seul exo) → 3. Arrière d’épaule → 4. Lombaires (Back Extension).',
+    isDefault: true,
+    finisher: 'Circuit Abdos Sablier, Vacuum & Taille Fine (12 min)',
+    notes: 'Respectez bien l’ordre : coudes ouverts sur le milieu du dos, un seul tirage grand dorsal, puis arrière d’épaule et back extension.',
+    exercises: [
+      {
+        id: 'r-bs-1',
+        exerciseId: 'wide-grip-seated-cable-row',
+        exerciseName: '1. Tirage horizontal prise large (Milieu du dos)',
+        category: 'back',
+        equipment: 'cable',
+        restSeconds: 75,
+        sets: [
+          { id: 's1', setNumber: 1, targetReps: 12, targetWeight: 25, completed: false },
+          { id: 's2', setNumber: 2, targetReps: 10, targetWeight: 30, completed: false },
+          { id: 's3', setNumber: 3, targetReps: 10, targetWeight: 30, completed: false },
+        ]
+      },
+      {
+        id: 'r-bs-2',
+        exerciseId: 'lat-pulldown',
+        exerciseName: '2. Tirage vertical poitrine (Grand dorsal)',
+        category: 'back',
+        equipment: 'cable',
+        restSeconds: 75,
+        sets: [
+          { id: 's1', setNumber: 1, targetReps: 12, targetWeight: 30, completed: false },
+          { id: 's2', setNumber: 2, targetReps: 10, targetWeight: 35, completed: false },
+          { id: 's3', setNumber: 3, targetReps: 10, targetWeight: 35, completed: false },
+        ]
+      },
+      {
+        id: 'r-bs-3',
+        exerciseId: 'reverse-pec-deck',
+        exerciseName: '3. Oiseau inversé à la machine (Arrière d’épaule)',
+        category: 'back',
+        equipment: 'machine',
+        restSeconds: 60,
+        sets: [
+          { id: 's1', setNumber: 1, targetReps: 15, targetWeight: 15, completed: false },
+          { id: 's2', setNumber: 2, targetReps: 12, targetWeight: 20, completed: false },
+          { id: 's3', setNumber: 3, targetReps: 12, targetWeight: 20, completed: false },
+        ]
+      },
+      {
+        id: 'r-bs-4',
+        exerciseId: 'hyperextensions-bench',
+        exerciseName: '4. Back Extension (Banc à lombaires 45°)',
+        category: 'back',
+        equipment: 'bodyweight',
+        restSeconds: 60,
+        sets: [
+          { id: 's1', setNumber: 1, targetReps: 15, targetWeight: 5, completed: false },
+          { id: 's2', setNumber: 2, targetReps: 15, targetWeight: 5, completed: false },
+          { id: 's3', setNumber: 3, targetReps: 12, targetWeight: 10, completed: false },
+        ]
+      }
+    ]
+  },
+  {
+    id: 'routine-dos-pecs-antagonist',
+    name: 'Séance Dos / Pecs (Upper Body Dessiné & Galbe)',
+    targetZone: 'back',
+    description: 'Combinaison antagoniste ultra-efficace : 2 exercices Dos pour la posture et le dessin + 2 exercices Pecs pour le maintien et le galbe du buste.',
+    isDefault: true,
+    finisher: '1. Marche Inclinée — Débutant (Pente 6 · Vitesse 4,5 · 20 min)',
+    notes: 'Alternez un tirage dos puis une poussée pecs pour un équilibre postural parfait.',
+    exercises: [
+      {
+        id: 'r-dp-1',
+        exerciseId: 'wide-grip-seated-cable-row',
+        exerciseName: 'Tirage horizontal prise large',
+        category: 'back',
+        equipment: 'cable',
+        restSeconds: 75,
+        sets: [
+          { id: 's1', setNumber: 1, targetReps: 12, targetWeight: 25, completed: false },
+          { id: 's2', setNumber: 2, targetReps: 10, targetWeight: 30, completed: false },
+          { id: 's3', setNumber: 3, targetReps: 10, targetWeight: 30, completed: false },
+        ]
+      },
+      {
+        id: 'r-dp-2',
+        exerciseId: 'incline-dumbbell-bench-press',
+        exerciseName: 'Développé incliné aux haltères (Haut des pecs)',
+        category: 'pecs',
+        equipment: 'dumbbell',
+        restSeconds: 75,
+        sets: [
+          { id: 's1', setNumber: 1, targetReps: 12, targetWeight: 8, completed: false },
+          { id: 's2', setNumber: 2, targetReps: 10, targetWeight: 10, completed: false },
+          { id: 's3', setNumber: 3, targetReps: 10, targetWeight: 10, completed: false },
+        ]
+      },
+      {
+        id: 'r-dp-3',
+        exerciseId: 'lat-pulldown',
+        exerciseName: 'Tirage vertical poitrine prise large (Lat Pulldown)',
+        category: 'back',
+        equipment: 'cable',
+        restSeconds: 75,
+        sets: [
+          { id: 's1', setNumber: 1, targetReps: 12, targetWeight: 30, completed: false },
+          { id: 's2', setNumber: 2, targetReps: 10, targetWeight: 35, completed: false },
+          { id: 's3', setNumber: 3, targetReps: 10, targetWeight: 35, completed: false },
+        ]
+      },
+      {
+        id: 'r-dp-4',
+        exerciseId: 'pec-deck-butterfly',
+        exerciseName: 'Écarté à la machine (Pec Deck / Butterfly)',
+        category: 'pecs',
+        equipment: 'machine',
+        restSeconds: 60,
+        sets: [
+          { id: 's1', setNumber: 1, targetReps: 15, targetWeight: 15, completed: false },
+          { id: 's2', setNumber: 2, targetReps: 12, targetWeight: 20, completed: false },
+          { id: 's3', setNumber: 3, targetReps: 12, targetWeight: 20, completed: false },
+        ]
+      }
+    ]
+  },
+  {
+    id: 'routine-pecs-arms-push',
+    name: 'Séance Pecs / Bras (Buste Tonique & Bras Fermes)',
+    targetZone: 'pecs',
+    description: 'Séance Push & Galbe combinant le travail des pectoraux (haut du buste et butterfly) avec la définition des épaules, triceps et biceps.',
+    isDefault: true,
+    finisher: '5. Circuit Global 360° : Abdos Complets & Gainage',
+    notes: 'Contrôlez bien la descente sur les développés et gardez les coudes fixes sur les triceps.',
+    exercises: [
+      {
+        id: 'r-pb-1',
+        exerciseId: 'incline-dumbbell-bench-press',
+        exerciseName: 'Développé incliné aux haltères (Haut des pecs)',
+        category: 'pecs',
+        equipment: 'dumbbell',
+        restSeconds: 75,
+        sets: [
+          { id: 's1', setNumber: 1, targetReps: 12, targetWeight: 8, completed: false },
+          { id: 's2', setNumber: 2, targetReps: 10, targetWeight: 10, completed: false },
+          { id: 's3', setNumber: 3, targetReps: 10, targetWeight: 10, completed: false },
+        ]
+      },
+      {
+        id: 'r-pb-2',
+        exerciseId: 'pec-deck-butterfly',
+        exerciseName: 'Écarté à la machine (Pec Deck / Butterfly)',
+        category: 'pecs',
+        equipment: 'machine',
+        restSeconds: 60,
+        sets: [
+          { id: 's1', setNumber: 1, targetReps: 15, targetWeight: 15, completed: false },
+          { id: 's2', setNumber: 2, targetReps: 12, targetWeight: 20, completed: false },
+          { id: 's3', setNumber: 3, targetReps: 12, targetWeight: 20, completed: false },
+        ]
+      },
+      {
+        id: 'r-pb-3',
+        exerciseId: 'lateral-raises-dumbbell',
+        exerciseName: 'Élévations latérales strictes aux haltères',
+        category: 'arms',
+        equipment: 'dumbbell',
+        restSeconds: 60,
+        sets: [
+          { id: 's1', setNumber: 1, targetReps: 15, targetWeight: 4, completed: false },
+          { id: 's2', setNumber: 2, targetReps: 12, targetWeight: 5, completed: false },
+          { id: 's3', setNumber: 3, targetReps: 12, targetWeight: 5, completed: false },
+        ]
+      },
+      {
+        id: 'r-pb-4',
+        exerciseId: 'cable-tricep-pushdown',
+        exerciseName: 'Extensions triceps à la corde (Pushdown)',
+        category: 'arms',
+        equipment: 'cable',
+        restSeconds: 60,
+        sets: [
+          { id: 's1', setNumber: 1, targetReps: 15, targetWeight: 15, completed: false },
+          { id: 's2', setNumber: 2, targetReps: 12, targetWeight: 17.5, completed: false },
+          { id: 's3', setNumber: 3, targetReps: 12, targetWeight: 17.5, completed: false },
+        ]
+      }
+    ]
+  },
+  {
+    id: 'routine-pecs-sculpt',
+    name: 'Focus Pecs & Maintien du Buste (4 exos)',
+    targetZone: 'pecs',
+    description: 'Séance dédiée au galbe et à la tonicité des pectoraux sous tous les angles : incliné, presse convergente, poulie vis-à-vis et pompes.',
+    isDefault: true,
+    finisher: 'Stomach Vacuum hypopressif (5 cycles de 12s)',
+    notes: 'Gardez les omoplates resserrées pour isoler les pectoraux et préserver les épaules.',
+    exercises: [
+      {
+        id: 'r-p-1',
+        exerciseId: 'incline-dumbbell-bench-press',
+        exerciseName: 'Développé incliné aux haltères (Haut des pecs)',
+        category: 'pecs',
+        equipment: 'dumbbell',
+        restSeconds: 75,
+        sets: [
+          { id: 's1', setNumber: 1, targetReps: 12, targetWeight: 8, completed: false },
+          { id: 's2', setNumber: 2, targetReps: 10, targetWeight: 10, completed: false },
+          { id: 's3', setNumber: 3, targetReps: 10, targetWeight: 10, completed: false },
+        ]
+      },
+      {
+        id: 'r-p-2',
+        exerciseId: 'chest-press-machine',
+        exerciseName: 'Presse à pectoraux assise (Chest Press)',
+        category: 'pecs',
+        equipment: 'machine',
+        restSeconds: 75,
+        sets: [
+          { id: 's1', setNumber: 1, targetReps: 12, targetWeight: 20, completed: false },
+          { id: 's2', setNumber: 2, targetReps: 10, targetWeight: 25, completed: false },
+          { id: 's3', setNumber: 3, targetReps: 10, targetWeight: 25, completed: false },
+        ]
+      },
+      {
+        id: 'r-p-3',
+        exerciseId: 'cable-chest-fly',
+        exerciseName: 'Écartés à la poulie vis-à-vis (Cable Fly)',
+        category: 'pecs',
+        equipment: 'cable',
+        restSeconds: 60,
+        sets: [
+          { id: 's1', setNumber: 1, targetReps: 15, targetWeight: 10, completed: false },
+          { id: 's2', setNumber: 2, targetReps: 12, targetWeight: 12.5, completed: false },
+          { id: 's3', setNumber: 3, targetReps: 12, targetWeight: 12.5, completed: false },
+        ]
+      },
+      {
+        id: 'r-p-4',
+        exerciseId: 'incline-push-ups',
+        exerciseName: 'Pompes inclinées sur banc (ou au sol)',
+        category: 'pecs',
+        equipment: 'bodyweight',
+        restSeconds: 60,
+        sets: [
+          { id: 's1', setNumber: 1, targetReps: 12, targetWeight: 0, completed: false },
+          { id: 's2', setNumber: 2, targetReps: 12, targetWeight: 0, completed: false },
+          { id: 's3', setNumber: 3, targetReps: 10, targetWeight: 0, completed: false },
+        ]
+      }
+    ]
+  },
+  {
     id: 'routine-back-v-shape',
     name: 'Dos & Silhouette V-Shape (Posture)',
     targetZone: 'back',
@@ -1915,7 +2564,7 @@ export const STARTER_ROUTINES: Routine[] = [
       {
         id: 'r-ex-b4',
         exerciseId: 'face-pull-rope',
-        exerciseName: 'Face Pull à la corde poulie haute',
+        exerciseName: 'Facepull à la corde (viser le front)',
         category: 'back',
         equipment: 'cable',
         restSeconds: 60,
