@@ -226,14 +226,16 @@ export const CustomExerciseModal: React.FC<CustomExerciseModalProps> = ({
         defaultRestSeconds: Number(defaultRestSeconds),
       };
 
-      await addCustomExercise(payload);
+      const createdEx = await addCustomExercise(payload);
 
       if (onExerciseCreated) {
-        onExerciseCreated({
-          ...payload,
-          id: `custom_${Date.now()}`,
-          isCustom: true,
-        });
+        onExerciseCreated(
+          createdEx || {
+            ...payload,
+            id: `custom_${Date.now()}`,
+            isCustom: true,
+          }
+        );
       }
 
       setName('');
@@ -250,7 +252,7 @@ export const CustomExerciseModal: React.FC<CustomExerciseModalProps> = ({
   };
 
   return createPortal(
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-[#3B0726]/60 backdrop-blur-xs p-4 overflow-y-auto">
+    <div className="fixed inset-0 z-[110] flex items-center justify-center bg-[#3B0726]/60 backdrop-blur-xs p-4 overflow-y-auto">
       <div className="w-full max-w-lg rounded-[32px] bg-[#FCFBF9] p-6 shadow-2xl border border-[#E6E1D8] my-6 max-h-[92vh] flex flex-col animate-in fade-in zoom-in-95 duration-150">
         {/* Header */}
         <div className="flex items-center justify-between pb-3 border-b border-[#F5B8EE]">

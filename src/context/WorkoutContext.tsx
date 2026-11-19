@@ -55,7 +55,7 @@ interface WorkoutContextType {
   loading: boolean;
   
   // Custom Exercises
-  addCustomExercise: (ex: Omit<Exercise, 'id' | 'isCustom' | 'userId'>) => Promise<void>;
+  addCustomExercise: (ex: Omit<Exercise, 'id' | 'isCustom' | 'userId'>) => Promise<Exercise | undefined>;
   deleteCustomExercise: (id: string) => Promise<void>;
   
   // Favorites
@@ -451,8 +451,10 @@ export const WorkoutProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const allExercises = [...DEFAULT_EXERCISES, ...customExercises];
 
   // Custom Exercise
-  const addCustomExercise = async (ex: Omit<Exercise, 'id' | 'isCustom' | 'userId'>) => {
-    if (!currentUid) return;
+  const addCustomExercise = async (
+    ex: Omit<Exercise, 'id' | 'isCustom' | 'userId'>
+  ): Promise<Exercise | undefined> => {
+    if (!currentUid) return undefined;
     const newEx: Exercise = {
       ...ex,
       id: `custom_${Date.now()}`,
@@ -470,6 +472,7 @@ export const WorkoutProvider: React.FC<{ children: React.ReactNode }> = ({ child
         handleFirestoreError(err, OperationType.CREATE, `users/${currentUid}/exercises/${newEx.id}`);
       }
     }
+    return newEx;
   };
 
   const deleteCustomExercise = async (id: string) => {

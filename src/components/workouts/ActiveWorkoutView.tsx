@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import {
   Check,
   Play,
@@ -17,9 +17,18 @@ import {
   TrendingUp,
   Timer,
   CheckCircle2,
+  Search,
+  Sparkles,
+  Trash2,
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
-import { WorkoutExerciseItem, ExerciseSet, Exercise, FinisherLog } from '../../types/fitness';
+import {
+  WorkoutExerciseItem,
+  ExerciseSet,
+  Exercise,
+  FinisherLog,
+  MuscleCategory,
+} from '../../types/fitness';
 import { useWorkout } from '../../context/WorkoutContext';
 import { useAuth } from '../../context/AuthContext';
 import { playRestCompleteSound } from '../../utils/audio';
@@ -31,6 +40,18 @@ import { FINISHERS_CATALOG } from '../../data/programsAndFinishersData';
 import { FinisherTimerModal } from './FinisherTimerModal';
 import { MachineIllustration } from '../exercises/MachineIllustration';
 import { PersonalGearReminder } from '../common/PersonalGearReminder';
+import { CustomExerciseModal } from '../exercises/CustomExerciseModal';
+
+const ADD_CATEGORY_CHIPS: { id: 'all' | 'favs' | MuscleCategory; label: string }[] = [
+  { id: 'all', label: 'Tous' },
+  { id: 'favs', label: '⭐ Favoris' },
+  { id: 'lower-body', label: 'Bas du corps' },
+  { id: 'back', label: 'Dos' },
+  { id: 'pecs', label: 'Pecs' },
+  { id: 'arms', label: 'Bras & Épaules' },
+  { id: 'abs', label: 'Abdos' },
+  { id: 'cardio', label: 'Cardio' },
+];
 
 interface ActiveWorkoutViewProps {
   onFinishWorkout: () => void;
@@ -88,6 +109,14 @@ export const ActiveWorkoutView: React.FC<ActiveWorkoutViewProps> = ({ onFinishWo
   const [customSpotifyUrl, setCustomSpotifyUrl] = useState(profile?.spotifyUrl || '');
   const [confirmCancelOpen, setConfirmCancelOpen] = useState(false);
 
+  // Add exercise during active session state
+  const [isAddExerciseOpen, setIsAddExerciseOpen] = useState(false);
+  const [addExerciseQuery, setAddExerciseQuery] = useState('');
+  const [addCategoryFilter, setAddCategoryFilter] = useState<'all' | 'favs' | MuscleCategory>('all');
+  const [customExInitialName, setCustomExInitialName] = useState<string | null>(null);
+  const [addedExerciseToast, setAddedExerciseToast] = useState<string | null>(null);
+  const toastTimerRef = useRef<NodeJS.Timeout | null>(null);
+
   // Hydration state & 10-minute reminder
   const [waterGlasses, setWaterGlasses] = useState(0);
   const [waterPrompt, setWaterPrompt] = useState(false);
@@ -96,6 +125,36 @@ export const ActiveWorkoutView: React.FC<ActiveWorkoutViewProps> = ({ onFinishWo
   const timerIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const workoutTimerRef = useRef<NodeJS.Timeout | null>(null);
 
+  const filteredAddExercises = useMemo(() => {
+    const q = addExerciseQuery.trim().toLowerCase();
+    return [...allExercises]
+      .filter((ex) => {
+        if (addCategoryFilter === 'favs' && !favorites.includes(ex.id)) return false;
+        if (
+          addCategoryFilter !== 'all' &&
+          addCategoryFilter !== 'favs' &&
+          ex.category !== addCategoryFilter
+        ) {
+          return false;
+        }
+        if (!q) return true;
+        return (
+          ex.name.toLowerCase().includes(q) ||
+          ex.primaryMuscle.toLowerCase().includes(q) ||
+          (ex.specificMuscle || '').toLowerCase().includes(q)
+        );
+      })
+      .sort((a, b) => {
+        const aStarts = q && a.name.toLowerCase().startsWith(q) ? 1 : 0;
+        const bStarts = q && b.name.toLowerCase().startsWith(q) ? 1 : 0;
+        if (aStarts !== bStarts) return bStarts - aStarts;
+        const aFav = favorites.includes(a.id) ? 1 : 0;
+        const bFav = favorites.includes(b.id) ? 1 : 0;
+        if (aFav !== bFav) return bFav - aFav;
+        return a.name.localeCompare(b.name, 'fr');
+      })
+      .slice(0, q ? 20 : 16);
+  }, [allExercises, favorites, addExerciseQuery, addCategoryFilter]);
 
   useEffect(() => {
     workoutTimerRef.current = setInterval(() => {
@@ -110,6 +169,7 @@ export const ActiveWorkoutView: React.FC<ActiveWorkoutViewProps> = ({ onFinishWo
 
     return () => {
       if (workoutTimerRef.current) clearInterval(workoutTimerRef.current);
+      if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
     };
   }, []);
 
@@ -295,6 +355,68 @@ export const ActiveWorkoutView: React.FC<ActiveWorkoutViewProps> = ({ onFinishWo
     setOpenSwapIndex(null);
   };
 
+  // Add a new exercise dynamically to the active workout
+  const handleAddExerciseToSession = (ex: Exercise) => {
+    const prevPerf = getPreviousPerformance(ex.id);
+    const startingWeight = prevPerf
+      ? prevPerf.weight
+      : ex.equipment === 'dumbbell'
+      ? 8
+      : ex.equipment === 'barbell'
+      ? 20
+      : ex.equipment === 'bodyweight' || ex.equipment === 'cardio_machine'
+      ? 0
+      : 20;
+
+    const targetReps = parseInt(ex.defaultReps, 10) || 10;
+    const setCount = ex.defaultSets || 3;
+
+    const sets: ExerciseSet[] = Array.from({ length: setCount }, (_, i) => ({
+      id: `set_${Date.now()}_${i}_${Math.random().toString(36).slice(2, 5)}`,
+      setNumber: i + 1,
+      targetReps,
+      targetWeight: startingWeight,
+      actualReps: targetReps,
+      actualWeight: startingWeight,
+      completed: false,
+    }));
+
+    const newItem: WorkoutExerciseItem = {
+      id: `item_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+      exerciseId: ex.id,
+      exerciseName: ex.name,
+      category: ex.category,
+      equipment: ex.equipment,
+      restSeconds: ex.defaultRestSeconds || profile?.defaultRestTime || 75,
+      sets,
+    };
+
+    updateActiveWorkout({
+      ...activeWorkout,
+      exercises: [...activeWorkout.exercises, newItem],
+    });
+
+    // Reset hot finisher flag since new uncompleted sets were added
+    hasTriggeredHotSuggestionRef.current = false;
+
+    setAddExerciseQuery('');
+    setIsAddExerciseOpen(false);
+    setAddedExerciseToast(`« ${ex.name} » ajouté à ta séance !`);
+    if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+    toastTimerRef.current = setTimeout(() => setAddedExerciseToast(null), 3500);
+  };
+
+  // Remove an exercise from the active workout (requires at least 1 exercise remaining)
+  const handleRemoveExerciseFromSession = (exIdx: number) => {
+    if (activeWorkout.exercises.length <= 1) return;
+    const updatedExercises = activeWorkout.exercises.filter((_, idx) => idx !== exIdx);
+    updateActiveWorkout({
+      ...activeWorkout,
+      exercises: updatedExercises,
+    });
+    setOpenSwapIndex(null);
+  };
+
   // Toggle set completion with animated checkmark + auto rest timer
   const toggleSetComplete = (exIndex: number, setIndex: number) => {
     const updatedExercises = [...activeWorkout.exercises];
@@ -462,6 +584,17 @@ export const ActiveWorkoutView: React.FC<ActiveWorkoutViewProps> = ({ onFinishWo
         </div>
 
         <div className="flex items-center gap-1.5 shrink-0">
+          {/* Quick Add Exercise Button in Top Bar */}
+          <button
+            type="button"
+            onClick={() => setIsAddExerciseOpen(true)}
+            className="h-9 px-2.5 sm:px-3 rounded-full bg-[#EC4899]/20 hover:bg-[#EC4899]/35 border border-[#EC4899]/40 text-[#FBCFE8] hover:text-white flex items-center gap-1 text-xs font-bold transition-all active:scale-95 cursor-pointer shrink-0"
+            title="Ajouter un exercice à la séance"
+          >
+            <Plus className="w-3.5 h-3.5 text-[#EC4899]" />
+            <span>Exo</span>
+          </button>
+
           {/* Quick Finish Button in Top Bar */}
           <button
             type="button"
@@ -589,6 +722,24 @@ export const ActiveWorkoutView: React.FC<ActiveWorkoutViewProps> = ({ onFinishWo
         variant="banner"
         title="Pense à prendre ton matériel avant de démarrer !"
       />
+
+      {/* Toast confirmation when an exercise is added */}
+      {addedExerciseToast && (
+        <div className="p-3 rounded-2xl bg-emerald-500/15 border border-emerald-400/40 text-emerald-200 flex items-center justify-between gap-2 text-xs font-bold animate-in fade-in duration-150">
+          <div className="flex items-center gap-2">
+            <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+            <span>{addedExerciseToast}</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setAddedExerciseToast(null)}
+            className="text-emerald-300/80 hover:text-white p-1"
+            aria-label="Fermer"
+          >
+            <X className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      )}
 
       {/* Exercise Cards List */}
       <div className="space-y-3.5">
@@ -824,6 +975,18 @@ export const ActiveWorkoutView: React.FC<ActiveWorkoutViewProps> = ({ onFinishWo
                       <span>Reporter cet exercice à la fin de la séance</span>
                     </button>
                   )}
+
+                  {/* Option to remove exercise from this session (if > 1 exercise) */}
+                  {activeWorkout.exercises.length > 1 && (
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveExerciseFromSession(exIdx)}
+                      className="w-full py-2 px-3 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 border border-rose-400/20 text-rose-200 font-semibold text-[11px] flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+                    >
+                      <Trash2 className="w-3.5 h-3.5 text-rose-300" />
+                      <span>Retirer cet exercice de la séance</span>
+                    </button>
+                  )}
                 </div>
               )}
 
@@ -998,6 +1161,25 @@ export const ActiveWorkoutView: React.FC<ActiveWorkoutViewProps> = ({ onFinishWo
             </div>
           );
         })}
+
+        {/* Add Exercise During Active Workout CTA */}
+        <button
+          type="button"
+          onClick={() => setIsAddExerciseOpen(true)}
+          className="w-full py-4 px-5 rounded-[24px] border border-dashed border-[#EC4899]/50 bg-[#1A0414] hover:bg-[#24061C] hover:border-[#EC4899] text-white flex items-center justify-center gap-2.5 transition-all active:scale-99 cursor-pointer shadow-xs"
+        >
+          <span className="w-8 h-8 rounded-full bg-[#EC4899]/20 border border-[#EC4899]/40 text-[#EC4899] flex items-center justify-center shrink-0">
+            <Plus className="w-4 h-4 stroke-[2.5]" />
+          </span>
+          <div className="text-left">
+            <span className="font-display font-bold text-sm text-white block leading-tight">
+              Ajouter un exercice à la séance
+            </span>
+            <span className="text-[11px] text-[#C29DB2] block">
+              Recherche rapide ou création d'un exercice sur-mesure
+            </span>
+          </div>
+        </button>
       </div>
 
       {/* MODULE FINISHERS EN FIN DE SÉANCE (3 Catégories + Chrono Interactif) & Ressenti */}
@@ -1288,6 +1470,155 @@ export const ActiveWorkoutView: React.FC<ActiveWorkoutViewProps> = ({ onFinishWo
           onSkipAndFinishWorkout={() => {
             setShowFinisherTimerModal(false);
             handleFinishSession();
+          }}
+        />
+
+        {/* Add Exercise During Active Workout BottomSheet */}
+        <BottomSheet
+          isOpen={isAddExerciseOpen}
+          onClose={() => setIsAddExerciseOpen(false)}
+          title="Ajouter un exercice"
+          subtitle="Sélectionne un exercice ou crée le tien en direct"
+        >
+          <div className="space-y-3">
+            {/* Predictive Search Input */}
+            <div className="relative">
+              <Search className="w-4 h-4 text-[#831843]/60 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+              <input
+                type="text"
+                autoFocus
+                value={addExerciseQuery}
+                onChange={(e) => setAddExerciseQuery(e.target.value)}
+                placeholder="Tape quelques lettres (ex: hip, tirage, pecs, biceps)..."
+                className="w-full pl-9 pr-9 py-2.5 rounded-2xl bg-[#F6EDF2] border border-[#E5D4DF] focus:outline-hidden focus:border-[#831843] text-xs font-semibold text-[#2B091C] placeholder-[#7A616F]/70"
+              />
+              {addExerciseQuery && (
+                <button
+                  type="button"
+                  onClick={() => setAddExerciseQuery('')}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[#7A616F] hover:text-[#3B0726]"
+                  aria-label="Effacer la recherche"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              )}
+            </div>
+
+            {/* Category Filter Chips */}
+            <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar">
+              {ADD_CATEGORY_CHIPS.map((chip) => {
+                const isActive = addCategoryFilter === chip.id;
+                return (
+                  <button
+                    key={chip.id}
+                    type="button"
+                    onClick={() => setAddCategoryFilter(chip.id)}
+                    className={`px-3 py-1.5 rounded-full text-[11px] font-bold whitespace-nowrap transition-all shrink-0 cursor-pointer ${
+                      isActive
+                        ? 'bg-[#831843] text-white shadow-2xs'
+                        : 'bg-[#F6EDF2] text-[#7A616F] hover:text-[#3B0726] border border-[#E5D4DF]/60'
+                    }`}
+                  >
+                    {chip.label}
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Autocomplete Results List */}
+            <div className="space-y-2 max-h-[45vh] overflow-y-auto pr-0.5">
+              {filteredAddExercises.length > 0 ? (
+                filteredAddExercises.map((ex) => {
+                  const isFav = favorites.includes(ex.id);
+                  const alreadyInSession = activeWorkout.exercises.some(
+                    (item) => item.exerciseId === ex.id
+                  );
+                  const prev = getPreviousPerformance(ex.id);
+                  return (
+                    <button
+                      key={ex.id}
+                      type="button"
+                      onClick={() => handleAddExerciseToSession(ex)}
+                      className="w-full p-3 rounded-2xl bg-white hover:bg-[#FDF2F8] border border-[#FBCFE8]/80 hover:border-[#EC4899] text-left flex items-center justify-between gap-3 transition-all active:scale-99 cursor-pointer shadow-2xs"
+                    >
+                      <div className="min-w-0 flex-1 space-y-0.5">
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          {isFav && (
+                            <Star className="w-3.5 h-3.5 fill-[#EC4899] text-[#EC4899] shrink-0" />
+                          )}
+                          <span className="font-display font-bold text-xs sm:text-sm text-[#2B091C] truncate">
+                            {ex.name}
+                          </span>
+                          {alreadyInSession && (
+                            <span className="px-2 py-0.5 rounded-full bg-[#FCE7F3] text-[#831843] text-[9px] font-extrabold shrink-0">
+                              Déjà dans la séance
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] text-[#7A616F]">
+                          <span className="font-semibold text-[#831843]">{ex.primaryMuscle}</span>
+                          <span>·</span>
+                          <span>{getEquipmentBadge(ex.equipment).label}</span>
+                          <span>·</span>
+                          <span>
+                            {ex.defaultSets || 3}×{ex.defaultReps || '10'}
+                          </span>
+                          {prev && (
+                            <>
+                              <span>·</span>
+                              <span className="font-mono font-bold text-[#EC4899]">
+                                Dernière : {prev.weight} kg
+                              </span>
+                            </>
+                          )}
+                        </div>
+                      </div>
+
+                      <span className="px-3 py-1.5 rounded-full bg-[#831843] text-white font-bold text-[11px] shrink-0 flex items-center gap-1">
+                        <Plus className="w-3.5 h-3.5" />
+                        <span>Ajouter</span>
+                      </span>
+                    </button>
+                  );
+                })
+              ) : (
+                <div className="p-5 rounded-2xl bg-[#F6EDF2] border border-[#E5D4DF] text-center space-y-2">
+                  <p className="text-xs font-semibold text-[#3B0726]">
+                    Aucun exercice trouvé pour « {addExerciseQuery} ».
+                  </p>
+                  <p className="text-[11px] text-[#7A616F]">
+                    Tu peux le créer en 10 secondes avec sa fiche complète et l'ajouter directement !
+                  </p>
+                </div>
+              )}
+            </div>
+
+            {/* Create Custom Exercise On-the-Fly Button */}
+            <button
+              type="button"
+              onClick={() => {
+                setCustomExInitialName(addExerciseQuery.trim() || '');
+              }}
+              className="w-full py-3 px-4 rounded-2xl bg-gradient-to-r from-[#FCE7F3] to-[#FDF2F8] hover:from-[#FBCFE8]/70 hover:to-[#FCE7F3] border border-[#FBCFE8] text-[#831843] font-bold text-xs flex items-center justify-center gap-2 transition-all cursor-pointer"
+            >
+              <Sparkles className="w-4 h-4 text-[#EC4899]" />
+              <span>
+                {addExerciseQuery.trim()
+                  ? `Créer « ${addExerciseQuery.trim()} » (fiche auto) & l'ajouter`
+                  : 'Créer un nouvel exercice personnalisé'}
+              </span>
+            </button>
+          </div>
+        </BottomSheet>
+
+        {/* Custom Exercise Creation Modal (adds directly into active workout upon creation) */}
+        <CustomExerciseModal
+          isOpen={customExInitialName !== null}
+          initialName={customExInitialName || ''}
+          onClose={() => setCustomExInitialName(null)}
+          onExerciseCreated={(createdEx) => {
+            setCustomExInitialName(null);
+            handleAddExerciseToSession(createdEx);
           }}
         />
       </div>

@@ -184,6 +184,136 @@ export interface WorkoutExerciseItem {
 
 export type WorkoutStatus = 'draft' | 'planned' | 'in_progress' | 'completed' | 'cancelled';
 
+export type FinisherCategory = 'abs' | 'cardio' | 'pump';
+
+export type FinisherExecutionMode = 'interval' | 'countdown' | 'stopwatch';
+
+export interface FinisherIntervalStep {
+  label: string;
+  type: 'effort' | 'rest';
+  durationSeconds: number;
+  cue?: string;
+}
+
+export interface FinisherPhaseAlert {
+  atElapsedSeconds: number;
+  label: string;
+  cue: string;
+}
+
+export interface FinisherPreset {
+  id: string;
+  name: string;
+  category: FinisherCategory;
+  categoryLabel: string;
+  durationLabel: string;
+  totalDurationSeconds: number;
+  executionMode: FinisherExecutionMode;
+  summary: string;
+  instructions: string[];
+  intervals?: FinisherIntervalStep[];
+  phaseAlerts?: FinisherPhaseAlert[];
+  targetReps?: number;
+  selectableExercises?: string[];
+  targetSets?: number;
+  restBetweenSetsSeconds?: number;
+}
+
+export interface FinisherLog {
+  presetId: string;
+  name: string;
+  category: FinisherCategory;
+  executionMode: FinisherExecutionMode;
+  completedAt: string;
+  durationSeconds: number;
+  repsCompleted?: number;
+  selectedExercise?: string;
+  isNewRecord?: boolean;
+}
+
+export type ProgramEquipmentTag =
+  | 'Bandes de résistance'
+  | 'Sangle chevillère'
+  | 'Haltères'
+  | 'Poids du corps'
+  | 'Machines'
+  | 'Barre & Poids';
+
+export type ProgramLevel = 'Débutant' | 'Intermédiaire' | 'Avancé';
+
+export type ProgramObjective = 'hypertrophy' | 'shred' | 'toning' | 'performance';
+
+export interface ProgramDayTemplate {
+  id: string;
+  dayNumber: number;
+  label: string;
+  isRest: boolean;
+  activityType: ActivityType;
+  routineId?: string;
+  workoutTitle?: string;
+  targetZone?: string;
+  durationMinutes?: number;
+  finisherPresetId?: string;
+  exercises?: WorkoutExerciseItem[];
+}
+
+export interface ProgramWeek {
+  weekNumber: number;
+  title: string;
+  focusNote: string;
+  days: ProgramDayTemplate[];
+}
+
+export interface TrainingProgram {
+  id: string;
+  title: string;
+  subtitle: string;
+  objective: ProgramObjective;
+  objectiveLabel: string;
+  durationWeeks: number;
+  sessionsPerWeek: number;
+  level: ProgramLevel;
+  coverImage: string;
+  equipment: ProgramEquipmentTag[];
+  description: string;
+  coachTips: string[];
+  weeks: ProgramWeek[];
+  isCustom?: boolean;
+  createdBy?: string;
+  createdAt?: string;
+}
+
+export interface MeasurementSnapshot {
+  weight?: number;
+  waist?: number;
+  hips?: number;
+  thighs?: number;
+  arms?: number;
+  chest?: number;
+  date?: string;
+}
+
+export interface UserActiveProgram {
+  programId: string;
+  programTitle: string;
+  objective: ProgramObjective;
+  objectiveLabel: string;
+  startDate: string;
+  preferredDays: number[];
+  durationWeeks: number;
+  sessionsPerWeek: number;
+  totalSessionsPlanned: number;
+  completedSessionCount: number;
+  completedWorkoutIds: string[];
+  currentWeek: number;
+  progressPercent: number;
+  totalVolumeKg: number;
+  initialMeasurements?: MeasurementSnapshot;
+  isCompleted: boolean;
+  completedAt?: string;
+  updatedAt?: string;
+}
+
 export interface Workout {
   id: string;
   userId: string;
@@ -193,6 +323,11 @@ export interface Workout {
   durationMinutes?: number;
   exercises: WorkoutExerciseItem[];
   finisher?: string;
+  finisherPresetId?: string;
+  finisherLog?: FinisherLog;
+  programId?: string;
+  programWeekNumber?: number;
+  programDayId?: string;
   notes?: string;
   rating?: number; // Ressenti de 1 à 5 🔥
   startedAt?: string;
@@ -240,8 +375,12 @@ export interface WeeklyPlanDay {
   targetZone?: string;
   activity?: ActivityType;
   activities?: ActivityType[];
-  finisherType?: 'none' | 'cardio' | 'abs';
+  finisherType?: 'none' | 'cardio' | 'abs' | 'pump';
   finisher?: string;
+  finisherPresetId?: string;
+  programId?: string;
+  programWeekNumber?: number;
+  programDayId?: string;
   status: 'planned' | 'in_progress' | 'completed' | 'postponed' | 'cancelled' | 'rest';
   notes?: string;
 }

@@ -352,7 +352,11 @@ export const PlanningView: React.FC<PlanningViewProps> = ({ onStartActiveMode })
     setSelectedActivities(acts);
     setSelectedRoutineId(day.routineId || '');
     setCustomWorkoutName(day.workoutName || '');
-    setFinisherType(day.finisherType || (day.finisher ? 'cardio' : 'none'));
+    setFinisherType(
+      day.finisherType === 'pump'
+        ? 'cardio'
+        : day.finisherType || (day.finisher ? 'cardio' : 'none')
+    );
     setFinisherText(day.finisher || '');
     setDayStatus(day.status);
   };
